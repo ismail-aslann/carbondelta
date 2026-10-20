@@ -807,14 +807,22 @@ class MainWindow(QMainWindow):
         self.ai.submit(ai_context.nl_input(sentence, self.inputs()), ("nlpage", sentence))
 
     def _nl_merge(self, sentence: str, reply: AIReply) -> tuple[dict | None, str, str]:
-        obj, via = None, "AI"
+        """AI ve kural çözümleyiciyi birleştirir: cümlede açıkça yazan sayılar (saat, süre, yüzde)
+        kural çözümleyiciden alınır; AI yalnızca eksikleri tamamlar. Oran yazılmadıysa %100."""
+        rule = ai_context.parse_nl_rule(sentence)
+        ai_obj = None
         if reply.source == "ai":
             try:
-                obj = parse_json_reply(reply.text)
+                ai_obj = parse_json_reply(reply.text)
             except Exception:
-                obj = None
-        if obj is None:
-            obj, via = ai_context.parse_nl_rule(sentence), "kural çözümleyici (AI çevrimdışı)"
+                ai_obj = None
+        if ai_obj is None:
+            obj, via = dict(rule), "kural çözümleyici (AI çevrimdışı)"
+        else:
+            obj, via = {**ai_obj, **rule}, "AI"
+        if not any(k in obj for k in ("asset_id", "s", "L", "t", "p")):
+            return None, "Cümleden senaryo bilgisi çıkarılamadı.", via
+        obj.setdefault("p", 1.0)
         merged, err = ai_context.validate_nl(obj, self.inputs())
         return merged, err, via
 
@@ -831,13 +839,13 @@ class MainWindow(QMainWindow):
                             m, [], [], r)
             return result_explanation(c) or status_message(r, set())
 
-        self.nl_tab.show_result(merged, via, explain)
-
-    def open_nl_result(self, merged: dict) -> None:
-        cur = self.inputs()
+        # Anlaşılan senaryo hemen Senaryo sekmesine uygulanır (önizleme ayrıca gösterilir).
         self.set_inputs(ScenarioInputs(merged["asset_id"], merged["date"], merged["s"], merged["L"],
                                        merged["t"], merged["p"], restricted=cur.restricted,
                                        ci_kind=cur.ci_kind))
+        self.nl_tab.show_result(merged, via, explain)
+
+    def open_nl_result(self, _merged: dict) -> None:
         self.tabs.setCurrentWidget(self.scenario_tab)
 
     # ------------------------------------------------------------------ AI
@@ -952,15 +960,7 @@ class MainWindow(QMainWindow):
         self.ai.submit(ai_context.nl_input(sentence, self.inputs()), ("nl", sentence))
 
     def _apply_nl(self, sentence: str, reply: AIReply) -> None:
-        obj, via = None, "AI"
-        if reply.source == "ai":
-            try:
-                obj = parse_json_reply(reply.text)
-            except Exception:
-                obj = None
-        if obj is None:
-            obj, via = ai_context.parse_nl_rule(sentence), "kural çözümleyici (AI çevrimdışı)"
-        merged, err = ai_context.validate_nl(obj, self.inputs())
+        merged, err, via = self._nl_merge(sentence, reply)
         if merged is None:
             self._set_nl_status(f"Uygulanamadı: {err}", "error")
             self._show_local("Doğal dil girişi", prompts()["by_id"]["nl_input"]["fallback_template"])

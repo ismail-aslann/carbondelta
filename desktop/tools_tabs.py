@@ -293,7 +293,7 @@ EXAMPLES = [
 
 
 class NLTab(QWidget):
-    """Doğal dil girişi: cümle → anlaşılan senaryo → önizleme → Senaryoda aç."""
+    """Doğal dil girişi: cümle → anlaşılan senaryo (Senaryo sekmesine uygulanır) → önizleme."""
 
     submit = Signal(str)          # cümle (ana pencere AI/kural çözümleyiciye gönderir)
     open_requested = Signal(dict)  # doğrulanmış girdiler
@@ -372,7 +372,7 @@ class NLTab(QWidget):
         clear = QPushButton("Temizle")
         clear.clicked.connect(self.clear)
         btns.addWidget(clear)
-        self.open_button = QPushButton("Senaryoda aç")
+        self.open_button = QPushButton("Senaryoya git")
         self.open_button.setObjectName("primary")
         self.open_button.clicked.connect(lambda: self._merged and self.open_requested.emit(self._merged))
         btns.addWidget(self.open_button)
@@ -425,5 +425,5 @@ class NLTab(QWidget):
         self.explain.setText(explanation_fn(m, merged, r))
         self.via.setText(f"Çözümleyen: {via}")
         self.status.setStyleSheet(f"color: {theme.GOOD}; font-weight: 600;")
-        self.status.setText("✓ Cümle anlaşıldı.")
+        self.status.setText("✓ Cümle anlaşıldı ve Senaryo sekmesine uygulandı.")
         self.result_card.show()
