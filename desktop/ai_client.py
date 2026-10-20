@@ -22,7 +22,7 @@ from PySide6.QtCore import QObject, QThread, Signal
 from desktop.resources import resource_path
 
 TIMEOUT_S = 15
-DEFAULT_MODELS = {"gemini": "gemini-2.5-flash", "claude": "claude-opus-5-5"}
+DEFAULT_MODELS = {"gemini": "gemini-flash-lite-latest", "claude": "claude-opus-5-5"}
 # Sunucu tarafı ret yedeği ("fallbacks": "default") yalnızca bu modellerde geçerli.
 CLAUDE_FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"}
 ALLOWED_HOURS = range(0, 25)
@@ -83,11 +83,14 @@ def render(template: str, values: dict) -> str:
 # Önünde harf/rakam/ondalık ayıracı olmayan sayı: "tCO2"deki 2 veya "06:00–09"daki
 # tire sayı sayılmaz. Türkçe virgül ve nokta ondalık, eksi (- veya −) desteklenir.
 _NUMBER = re.compile(r"(?<![\w.,])[-−+]?\d+(?:[.,]\d+)?")
+# 15.07.2025 / 15/07/2025 gibi tarihler: gün, ay, yıl ayrı tam sayılar olarak okunur.
+_DATE = re.compile(r"(?<![\w.,])(\d{1,2})[./](\d{1,2})[./](\d{4})(?![\w])")
 
 
 def extract_numbers(text: str) -> list[tuple[float, int]]:
     """Metindeki sayılar: (mutlak değer, ondalık basamak sayısı)."""
     out = []
+    text = _DATE.sub(r"\1 \2 \3", text)
     for tok in _NUMBER.findall(text):
         tok = tok.lstrip("+-−").replace(",", ".")
         decimals = len(tok.split(".")[1]) if "." in tok else 0

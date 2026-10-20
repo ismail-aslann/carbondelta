@@ -47,6 +47,12 @@ def test_invented_number_is_rejected():
     assert not validate_numbers("Saat 27'de çalıştırın.", ALLOWED)
 
 
+def test_turkish_date_is_not_a_decimal():
+    assert [v for v, _ in extract_numbers("15.07.2025 tarihinde")] == [15.0, 7.0, 2025.0]
+    assert validate_numbers("15.07.2025 tarihinde −15,62 % değişim.", ALLOWED)
+    assert not validate_numbers("26.09.2031 tarihinde", ALLOWED)
+
+
 def test_too_many_decimals_rejected():
     assert not validate_numbers("Delta −15,619 %.", ALLOWED)
 

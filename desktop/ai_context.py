@@ -61,6 +61,12 @@ def _base(c) -> tuple[dict, dict]:
             "daily_kg": r.daily_kg,
             "daily_delta_pct": r.daily_delta_pct,
         })
+    if r.status == "ok":
+        # LLM'in yönü ters anlatmaması için sonucun yönü açıkça metin olarak verilir.
+        payload["direction"] = ("Seçilen (hedef) pencerede emisyon standart pencereden DAHA DÜŞÜK."
+                                if r.delta_pct < 0 else
+                                "Seçilen (hedef) pencerede emisyon standart pencereden DAHA YÜKSEK."
+                                if r.delta_pct > 0 else "Emisyon değişmiyor.")
     display = {
         "machine": i.asset_id,
         "machine_type": m["type"],

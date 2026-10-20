@@ -80,7 +80,7 @@ build.bat
 ```
 LLM_PROVIDER=gemini        # veya claude
 LLM_API_KEY=...
-LLM_MODEL=                 # boş: gemini-2.5-flash / claude-opus-5-5
+LLM_MODEL=                 # boş: gemini-flash-lite-latest / claude-opus-5-5
 ```
 
 - Geliştirmede `.env` repo kökünde, EXE ile kullanırken **EXE'nin yanında** (`dist\CarbonDelta\.env`) durur. EXE'ye gömülmez, git'e girmez.
