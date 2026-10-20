@@ -57,6 +57,18 @@ def test_too_many_decimals_rejected():
     assert not validate_numbers("Delta −15,619 %.", ALLOWED)
 
 
+@pytest.mark.parametrize("text,expected", [
+    ("Ben Delti, tesisteki karbon azaltım çalışmalarınızda size rehberlik etmek için buradayım. "
+     "Kaydırma emisyonu düşürür.", "Kaydırma emisyonu düşürür."),
+    ("Merhaba! Ben Delti. Emisyon −15,62 % değişir.", "Emisyon −15,62 % değişir."),
+    ("Delti olarak açıklayayım: emisyon düşer. Günlük etki küçük.", "Günlük etki küçük."),
+    ("Emisyon −15,62 % değişir. Ben Delti olarak önermem.", "Emisyon −15,62 % değişir. Ben Delti olarak önermem."),
+])
+def test_strip_intro(text, expected):
+    from desktop.ai_client import strip_intro
+    assert strip_intro(text) == expected
+
+
 def test_render_keeps_unknown_braces():
     assert render('{"a": 1} {x}', {"x": "ok"}) == '{"a": 1} ok'
 

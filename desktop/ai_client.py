@@ -250,6 +250,20 @@ class AIReply:
     error: str = ""
 
 
+# "Ben Delti, …", "Merhaba!", "Delti olarak …" gibi baştaki tanıtım/selam cümleleri.
+_INTRO = re.compile(r"^\s*(merhaba|selam|iyi günler|ben,?\s+delti|delti olarak|ben\s+carbondelta)\b"
+                    r"[^.!?]*[.!?]+\s*", re.IGNORECASE)
+
+
+def strip_intro(text: str) -> str:
+    """Model talimata rağmen kendini tanıtırsa baştaki tanıtım cümlelerini siler."""
+    prev = None
+    while prev != text:
+        prev = text
+        text = _INTRO.sub("", text, count=1)
+    return text.strip()
+
+
 def run_request(cfg: AIConfig, req: AIRequest) -> AIReply:
     """Engelleyici çağrı (worker thread içinde çalışır)."""
     if not cfg.enabled:
@@ -260,6 +274,9 @@ def run_request(cfg: AIConfig, req: AIRequest) -> AIReply:
         return AIReply(req.func_id, req.fallback(), "fallback_offline", str(e))
     if req.json_mode:
         return AIReply(req.func_id, text, "ai")
+    text = strip_intro(text)
+    if not text:
+        return AIReply(req.func_id, req.fallback(), "fallback_invalid", "Boş yanıt (yalnızca giriş cümlesi).")
     if not validate_numbers(text, allowed_numbers([req.payload, req.extra or {}])):
         return AIReply(req.func_id, req.fallback(), "fallback_invalid", text)
     return AIReply(req.func_id, text, "ai")
