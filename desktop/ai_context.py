@@ -41,13 +41,12 @@ def _ci(v: float) -> str:
 def _base(c) -> tuple[dict, dict]:
     i, r, m = c.inputs, c.result, c.machine
     payload = {
-        "machine": i.asset_id,
-        "machine_type": m["type"],
-        "date": i.date,
+        "machine": m["name"],
+        "date": fmt.date(i.date),
         "emission_type": i.ci_kind,
         "status": r.status,
-        "source_window_hours": [i.s, i.s + i.L],
-        "target_window_hours": [i.t, i.t + i.L],
+        "source_window": fmt.window(i.s, i.L),
+        "target_window": fmt.window(i.t, i.L),
         "shift_ratio_pct": i.p * 100,
     }
     if i.parametric:
@@ -68,9 +67,8 @@ def _base(c) -> tuple[dict, dict]:
                                 "Seçilen (hedef) pencerede emisyon standart pencereden DAHA YÜKSEK."
                                 if r.delta_pct > 0 else "Emisyon değişmiyor.")
     display = {
-        "machine": i.asset_id,
-        "machine_type": m["type"],
-        "date": i.date,
+        "machine": m["name"],
+        "date": fmt.date(i.date),
         "source_window": fmt.window(i.s, i.L),
         "target_window": fmt.window(i.t, i.L),
         "ratio_pct": fmt.num(i.p * 100, 0),
@@ -132,8 +130,9 @@ def reverse_effect_warn(c) -> AIRequest:
 
 def non_shiftable_warn(c) -> AIRequest:
     m = c.machine
-    payload = {"machine": m["id"], "machine_type": m["type"], "role": m["role"]}
-    display = {"machine": m["id"], "machine_type": m["type"]}
+    payload = {"machine": m["name"], "shiftable": False,
+               "reason": "sürekli veya süreç gereği saati değiştirilemeyen yük"}
+    display = {"machine": m["name"]}
     return _req("non_shiftable_warn", payload, display)
 
 
@@ -189,8 +188,8 @@ def season_note(c) -> AIRequest | None:
         return None
     prof = season_profile(list(range(i.s, i.s + i.L)), list(range(i.t, i.t + i.L)), i.ci_kind)
     payload = {
-        "source_window_hours": [i.s, i.s + i.L],
-        "target_window_hours": [i.t, i.t + i.L],
+        "source_window": fmt.window(i.s, i.L),
+        "target_window": fmt.window(i.t, i.L),
         "emission_type": i.ci_kind,
         **prof,
     }
@@ -208,19 +207,21 @@ def season_note(c) -> AIRequest | None:
 
 
 def _history_label(h: dict) -> str:
-    return f"{h['asset_id']} {h['date']} {fmt.window(h['s'], h['L'])} → {fmt.window(h['t'], h['L'])}"
+    name = data.machine(h["asset_id"])["name"]
+    return f"{name} {fmt.date(h['date'])} {fmt.window(h['s'], h['L'])} → {fmt.window(h['t'], h['L'])}"
 
 
 def scenario_compare(saved: dict, c) -> AIRequest:
     a_delta, b_delta = saved["delta_pct"], c.result.delta_pct
     cmp = compare(a_delta, b_delta)
     payload = {
-        "a": {"label": _history_label(saved), "machine": saved["asset_id"], "date": saved["date"],
+        "a": {"label": _history_label(saved), "machine": data.machine(saved["asset_id"])["name"],
+              "date": fmt.date(saved["date"]),
               "status": saved["status"], "delta_pct": a_delta,
               "daily_delta_pct": saved["daily_delta_pct"]},
         "b": {"label": _history_label({"asset_id": c.inputs.asset_id, "date": c.inputs.date,
                                        "s": c.inputs.s, "L": c.inputs.L, "t": c.inputs.t}),
-              "machine": c.inputs.asset_id, "date": c.inputs.date, "status": c.result.status,
+              "machine": c.machine["name"], "date": fmt.date(c.inputs.date), "status": c.result.status,
               "delta_pct": b_delta, "daily_delta_pct": c.result.daily_delta_pct},
         **cmp,
     }
@@ -272,7 +273,7 @@ def data_source_explain() -> AIRequest:
 # ------------------------------------------------------------- natural language
 def nl_input(sentence: str, current) -> AIRequest:
     import json
-    machines = [{"id": m["id"], "type": m["type"], "shiftable": m["shiftable"]}
+    machines = [{"id": m["id"], "name": m["name"], "type": m["type"], "shiftable": m["shiftable"]}
                 for m in data.machines()]
     cur = {"asset_id": current.asset_id, "s": current.s, "L": current.L, "t": current.t,
            "p": current.p}

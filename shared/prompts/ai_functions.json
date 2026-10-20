@@ -45,7 +45,7 @@
    "title": "Kayamayan yük uyarısı",
    "system": "Bu makinenin yükünün neden kaydırılamadığını ve neden öneri üretilmediğini kısa açıkla.",
    "user_template": "Makine (JSON):\n{payload_json}",
-   "fallback_template": "{machine} ({machine_type}) sürekli veya kısıtlı bir süreçtir; yükü başka saate kaydırılamaz. Bu nedenle öneri üretilmez."
+   "fallback_template": "{machine} sürekli veya kısıtlı bir süreçtir; yükü başka saate kaydırılamaz. Bu nedenle öneri üretilmez."
   },
   {
    "id": "restricted_warn",

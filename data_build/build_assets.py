@@ -28,6 +28,16 @@ EPIAS_KEEP = [
     "Yenilenebilir_Payi_Yuzde", "Fosil_Payi_Yuzde", "Baskin_Kaynak",
 ]
 MAIN_PACKAGE = "Evet (Ana Paket)"
+# Arayüzde gösterilen Türkçe adlar (masaüstü ve mobil ortak).
+MACHINE_NAMES = {
+    "comp_b": "Kompresör",
+    "ex_a": "Havalandırma",
+    "mh_a": "Otomasyon ve taşıma",
+    "mix_c": "Karıştırıcı",
+    "p_i": "Ana pres",
+    "php_c": "Pres ısıtma",
+    "u_e": "Yardımcı tesis",
+}
 NON_SHIFTABLE_ROLE = "Kayamayan_Kisitli_Yuk"
 
 
@@ -63,6 +73,7 @@ def build_machines(loads: pd.DataFrame) -> list[dict]:
         assert days, f"{row.AssetId} için yük verisi yok"
         machines.append({
             "id": row.AssetId,
+            "name": MACHINE_NAMES[row.AssetId],
             "type": row.AssetType,
             "role": row.CarbonDelta_Role,
             "shiftable": row.CarbonDelta_Role != NON_SHIFTABLE_ROLE,

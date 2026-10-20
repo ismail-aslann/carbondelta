@@ -29,6 +29,8 @@ a = Analysis(
     datas=[
         (str(ROOT / "shared" / "assets"), "shared/assets"),
         (str(ROOT / "shared" / "prompts"), "shared/prompts"),
+        (str(ROOT / "desktop" / "icon.png"), "desktop"),
+        (str(ROOT / "desktop" / "ui"), "desktop/ui"),
     ],
     hiddenimports=["matplotlib.backends.backend_qtagg", "dotenv"],
     hookspath=[],

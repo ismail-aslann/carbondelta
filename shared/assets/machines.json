@@ -1,6 +1,7 @@
 [
  {
   "id": "comp_b",
+  "name": "Kompresör",
   "type": "CompressedAir",
   "role": "Esnek_Yuk",
   "shiftable": true,
@@ -229,6 +230,7 @@
  },
  {
   "id": "ex_a",
+  "name": "Havalandırma",
   "type": "HVAC_AirExtraction",
   "role": "Kayamayan_Kisitli_Yuk",
   "shiftable": false,
@@ -457,6 +459,7 @@
  },
  {
   "id": "mh_a",
+  "name": "Otomasyon ve taşıma",
   "type": "Automation_Handling",
   "role": "Esnek_Yuk",
   "shiftable": true,
@@ -822,6 +825,7 @@
  },
  {
   "id": "mix_c",
+  "name": "Karıştırıcı",
   "type": "ProcessMixing",
   "role": "Esnek_Yuk",
   "shiftable": true,
@@ -1187,6 +1191,7 @@
  },
  {
   "id": "p_i",
+  "name": "Ana pres",
   "type": "Press_Main",
   "role": "Esnek_Yuk",
   "shiftable": true,
@@ -1475,6 +1480,7 @@
  },
  {
   "id": "php_c",
+  "name": "Pres ısıtma",
   "type": "Press_Heating",
   "role": "Kayamayan_Kisitli_Yuk",
   "shiftable": false,
@@ -1547,6 +1553,7 @@
  },
  {
   "id": "u_e",
+  "name": "Yardımcı tesis",
   "type": "Utilities",
   "role": "Esnek_Yuk",
   "shiftable": true,
