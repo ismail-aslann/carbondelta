@@ -27,7 +27,7 @@ pip install -r requirements.txt
 python -m desktop
 ```
 
-Açılışta demo senaryosu yüklenir: comp_b, 15.07.2025, 03:00–06:00 → 18:00–21:00, %100 → **−15,62 %**.
+Açılışta demo senaryosu yüklenir: Kompresör (comp_b), 15.07.2025, 03:00–06:00 → 18:00–21:00, %100 → **−15,62 %**.
 
 Sekmeler: **Senaryo** (girdiler, grafik, sonuç, açıklama) · **Hesabı Göster** (formül, saat saat
 döküm, ETKB tablosu, CSV dışa aktarma) · **Geçmiş** (kayıtlı senaryolar; çift tık = geri yükle,
@@ -61,6 +61,12 @@ Asset dosyalarını ham veriden (`data_raw/karbondeltaveri/`, git'e girmez) yeni
 
 ```bat
 python data_build\build_assets.py
+```
+
+Uygulama ikonunu ve arayüz ok simgelerini yeniden üretmek için:
+
+```bat
+python data_build\make_icon.py
 ```
 
 ## EXE üretme
