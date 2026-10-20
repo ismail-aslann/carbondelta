@@ -212,6 +212,7 @@ class HistoryTab(QWidget):
     """Kaydedilmiş senaryoların listesi."""
 
     restore_requested = Signal(dict)
+    summarize_requested = Signal()
 
     HEADERS = ["Kayıt zamanı", "Makine", "Gün", "Standart", "Seçilen", "Oran", "Tip", "Mod",
                "Durum", "Değişim", "Günlük etki"]
@@ -225,7 +226,9 @@ class HistoryTab(QWidget):
         hint = QLabel("Çift tıklayarak senaryoyu geri yükleyin.")
         hint.setStyleSheet("color: #6b7785;")
         bar.addWidget(hint, 1)
-        self.toolbar = bar
+        self.summarize_button = QPushButton("Özetle")
+        self.summarize_button.clicked.connect(self.summarize_requested.emit)
+        bar.addWidget(self.summarize_button)
         self.delete_button = QPushButton("Sil")
         self.delete_button.clicked.connect(self._delete_selected)
         bar.addWidget(self.delete_button)
@@ -240,7 +243,22 @@ class HistoryTab(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table.cellDoubleClicked.connect(self._restore_row)
         lay.addWidget(self.table, 1)
+
+        self.summary_source = QLabel("")
+        self.summary_source.setStyleSheet("color: #6b7785;")
+        self.summary_source.hide()
+        lay.addWidget(self.summary_source)
+        self.summary_text = QTextBrowser()
+        self.summary_text.setMaximumHeight(110)
+        self.summary_text.hide()
+        lay.addWidget(self.summary_text)
         self.refresh()
+
+    def show_summary(self, text: str, source: str) -> None:
+        self.summary_source.setText(f"Geçmiş özeti · {source}" if source else "Geçmiş özeti")
+        self.summary_text.setPlainText(text)
+        self.summary_source.show()
+        self.summary_text.show()
 
     def refresh(self) -> None:
         rows = self.db.list()

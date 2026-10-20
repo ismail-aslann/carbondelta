@@ -85,6 +85,10 @@ def load_24(asset_id: str, date: str) -> list[float]:
     return list(_loads()[(asset_id, date)])
 
 
+def all_dates() -> list[str]:
+    return sorted(_epias())
+
+
 def ci_24(date: str, kind: str = "tCO2") -> list[float]:
     col = CI_COLUMNS[kind]
     return [float(row[col]) for row in _epias()[date]]

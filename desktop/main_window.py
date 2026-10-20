@@ -8,12 +8,14 @@ from datetime import date as Date
 from PySide6.QtCore import QDate, Qt, QTimer
 from PySide6.QtGui import QBrush, QColor, QFont, QTextCharFormat, QValidator
 from PySide6.QtWidgets import (
-    QButtonGroup, QCheckBox, QComboBox, QDateEdit, QDoubleSpinBox, QFormLayout, QFrame,
-    QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMainWindow, QPushButton, QRadioButton,
-    QScrollArea, QSlider, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
+    QApplication, QButtonGroup, QCheckBox, QComboBox, QDateEdit, QDoubleSpinBox, QFormLayout,
+    QFrame, QGridLayout, QGroupBox, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow,
+    QMenu, QPushButton, QRadioButton, QScrollArea, QSlider, QSpinBox, QTabWidget, QTextEdit,
+    QToolButton, QVBoxLayout, QWidget,
 )
 
-from desktop import fmt
+from desktop import ai_context, fmt
+from desktop.ai_client import AIReply, AIRequest, AIService, parse_json_reply, prompts
 from desktop.chart_widget import ChartWidget
 from desktop.history_db import HistoryDB
 from desktop.tabs import CalcTab, HistoryTab, SourcesTab
@@ -93,34 +95,38 @@ def status_message(r: Result, restricted: set[int]) -> str:
     return ""
 
 
-def template_text(c: Computation) -> str:
-    """AI katmanı gelene kadar gösterilen şablon açıklama."""
-    r, i = c.result, c.inputs
-    if r.status != "ok":
-        return status_message(r, set(i.restricted))
-    direction = "düşürür" if r.delta_pct <= 0 else "artırır"
-    return (
-        f"{i.asset_id} yükünün %{fmt.num(i.p * 100, 0)}'ü {fmt.window(i.s, i.L)} yerine "
-        f"{fmt.window(i.t, i.L)} aralığına alınırsa pencere emisyonu "
-        f"{fmt.num(r.baseline_kg)} → {fmt.num(r.scenario_kg)} kg olur ({fmt.pct(r.delta_pct)}); "
-        f"bu kaydırma emisyonu {direction}. "
-        f"Günlük toplam emisyona etkisi {fmt.pct(r.daily_delta_pct)}."
-    )
+SOURCE_LABELS = {
+    "ai": "AI",
+    "fallback_offline": "şablon · çevrimdışı",
+    "fallback_invalid": "şablon · doğrulanamadı",
+    "local": "uygulama",
+    "pending": "AI metni hazırlanıyor…",
+}
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, db: HistoryDB | None = None):
+    def __init__(self, db: HistoryDB | None = None, ai: AIService | None = None):
         super().__init__()
         self.db = db or HistoryDB()
+        self.ai = ai or AIService(parent=self)
+        self.ai.reply.connect(self._on_ai_reply)
         self.setWindowTitle(APP_TITLE)
-        self.resize(1280, 820)
+        self.resize(1280, 860)
         self.current: Computation | None = None
         self._loading = False
+        self._ai_gen = 0
+        self._ai_slots: list[tuple[str, str, str]] = []  # (başlık, metin, kaynak)
 
         self._debounce = QTimer(self)
         self._debounce.setSingleShot(True)
         self._debounce.setInterval(50)
         self._debounce.timeout.connect(self.recompute)
+
+        # Kaydırıcı sürüklenirken her adımda API çağrısı yapmamak için ayrı bekleme.
+        self._ai_debounce = QTimer(self)
+        self._ai_debounce.setSingleShot(True)
+        self._ai_debounce.setInterval(700)
+        self._ai_debounce.timeout.connect(self._request_auto_ai)
 
         central = QWidget()
         root = QVBoxLayout(central)
@@ -131,6 +137,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.calc_tab, "Hesabı Göster")
         self.history_tab = HistoryTab(self.db)
         self.history_tab.restore_requested.connect(self.restore_history)
+        self.history_tab.summarize_requested.connect(self.summarize_history)
         self.tabs.addTab(self.history_tab, "Geçmiş")
         self.tabs.addTab(SourcesTab(), "Kaynaklar")
         root.addWidget(self.tabs, 1)
@@ -146,7 +153,24 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ UI
     def _build_scenario_tab(self) -> QWidget:
         tab = QWidget()
-        lay = QHBoxLayout(tab)
+        outer = QVBoxLayout(tab)
+
+        nl_row = QHBoxLayout()
+        nl_row.addWidget(QLabel("Doğal dil:"))
+        self.nl_edit = QLineEdit()
+        self.nl_edit.setPlaceholderText("Örn. Kompresörü 3'ten 18'e al · Presi %50 oranla 2 saat 21'e kaydır")
+        self.nl_edit.returnPressed.connect(self.submit_nl)
+        nl_row.addWidget(self.nl_edit, 1)
+        self.nl_button = QPushButton("Uygula")
+        self.nl_button.clicked.connect(self.submit_nl)
+        nl_row.addWidget(self.nl_button)
+        self.nl_status = QLabel("")
+        self.nl_status.setStyleSheet(f"color: {MUTED};")
+        nl_row.addWidget(self.nl_status)
+        outer.addLayout(nl_row)
+
+        lay = QHBoxLayout()
+        outer.addLayout(lay, 1)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -324,6 +348,34 @@ class MainWindow(QMainWindow):
     def _build_ai_box(self) -> QWidget:
         box = QGroupBox("Açıklama")
         lay = QVBoxLayout(box)
+
+        bar = QHBoxLayout()
+        self.ai_source_label = QLabel("")
+        self.ai_source_label.setStyleSheet(f"color: {MUTED};")
+        bar.addWidget(self.ai_source_label, 1)
+        self.why_button = QPushButton("Neden bu saat?")
+        self.why_button.clicked.connect(lambda: self.request_manual(ai_context.hour_reason))
+        bar.addWidget(self.why_button)
+        self.compare_button = QPushButton("Senaryoyu karşılaştır")
+        self.compare_button.clicked.connect(self.compare_with_saved)
+        bar.addWidget(self.compare_button)
+
+        more = QToolButton()
+        more.setText("Diğer")
+        more.setPopupMode(QToolButton.InstantPopup)
+        menu = QMenu(more)
+        menu.addAction("Günlük etki yorumu", lambda: self.request_manual(ai_context.daily_impact))
+        menu.addAction("Mevsim notu", lambda: self.request_manual(ai_context.season_note))
+        menu.addAction("Rapor cümlesi", lambda: self.request_manual(ai_context.report_sentence))
+        menu.addSeparator()
+        menu.addAction("Terim açıkla…", self.explain_term)
+        menu.addAction("Veri kaynakları", lambda: self.request_manual(lambda c: ai_context.data_source_explain()))
+        menu.addSeparator()
+        menu.addAction("Metni kopyala", lambda: QApplication.clipboard().setText(self.ai_text.toPlainText()))
+        more.setMenu(menu)
+        bar.addWidget(more)
+        lay.addLayout(bar)
+
         self.ai_text = QTextEdit()
         self.ai_text.setReadOnly(True)
         self.ai_text.setMinimumHeight(70)
@@ -444,7 +496,7 @@ class MainWindow(QMainWindow):
                                     i.param_kwh if i.parametric else None)
 
     # ------------------------------------------------------------- compute
-    def recompute(self) -> None:
+    def recompute(self, auto_ai: bool = True) -> None:
         i = self.inputs()
         m = data.machine(i.asset_id)
         load, ci = self._series(i)
@@ -455,7 +507,8 @@ class MainWindow(QMainWindow):
                                 r.delta_pct, CI_LABELS[i.ci_kind])
         self._update_card(self.current)
         self.calc_tab.update_computation(self.current)
-        self.ai_text.setPlainText(template_text(self.current))
+        if auto_ai:
+            self._schedule_auto_ai()
 
     def save_current(self) -> int | None:
         if self.current is None:
@@ -510,9 +563,157 @@ class MainWindow(QMainWindow):
         load, ci = self._series(i)
         found = best_window(load, ci, i.s, i.L, i.p, set(i.restricted), m["shiftable"])
         if found is None:
-            self.ai_text.setPlainText("Bu girdilerle geçerli bir hedef pencere bulunamadı "
-                                      "(yük yok, aralık dışı veya tüm saatler kısıtlı).")
+            self._show_local("En iyi saat", "Bu girdilerle geçerli bir hedef pencere bulunamadı "
+                             "(yük yok, aralık dışı veya tüm saatler kısıtlı).")
             return
         t, _ = found
         self.t_spin.setValue(t)
-        self.recompute()
+        self._debounce.stop()
+        self.recompute(auto_ai=False)
+        self.request_manual(ai_context.best_window_explain)
+
+    # ------------------------------------------------------------------ AI
+    def _start_batch(self, items: list[tuple[str, str, str]]) -> int:
+        """Açıklama kutusunda yeni bir metin grubu başlatır; eski yanıtlar yok sayılır."""
+        self._ai_gen += 1
+        self._ai_slots = list(items)
+        self._render_ai()
+        return self._ai_gen
+
+    def _show_local(self, title: str, text: str) -> None:
+        self._ai_debounce.stop()
+        self._start_batch([(title, text, "local")])
+
+    def _render_ai(self) -> None:
+        texts, sources = [], []
+        offline = invalid = False
+        for title, text, source in self._ai_slots:
+            texts.append(text)
+            sources.append(f"{title} · {SOURCE_LABELS[source]}")
+            offline |= source == "fallback_offline"
+            invalid |= source == "fallback_invalid"
+        notes = []
+        if offline:
+            notes.append(prompts()["offline_message"])
+        if invalid:
+            notes.append(prompts()["invalid_message"])
+        body = "\n\n".join(texts)
+        self.ai_text.setPlainText("\n".join(notes) + ("\n\n" if notes else "") + body)
+        self.ai_source_label.setText("  |  ".join(sources))
+
+    def _submit_batch(self, reqs: list[AIRequest]) -> None:
+        pending = "pending" if self.ai.online else "fallback_offline"
+        gen = self._start_batch([(self._title(r), r.fallback(), pending) for r in reqs])
+        for idx, req in enumerate(reqs):
+            self.ai.submit(req, ("main", gen, idx))
+
+    @staticmethod
+    def _title(req: AIRequest) -> str:
+        return prompts()["by_id"][req.func_id]["title"]
+
+    def _schedule_auto_ai(self) -> None:
+        c = self.current
+        reqs = ai_context.auto_requests(c)
+        if not reqs:
+            self._show_local("Durum", status_message(c.result, set(c.inputs.restricted)))
+            return
+        if not self.ai.online:
+            self._ai_debounce.stop()
+            self._submit_batch(reqs)
+            return
+        # Şablon metni hemen göster, AI metni kısa bir beklemeden sonra iste.
+        self._start_batch([(self._title(r), r.fallback(), "pending") for r in reqs])
+        self._ai_debounce.start()
+
+    def _request_auto_ai(self) -> None:
+        if self.current is not None:
+            reqs = ai_context.auto_requests(self.current)
+            if reqs:
+                self._submit_batch(reqs)
+
+    def request_manual(self, builder) -> None:
+        if self.current is None:
+            return
+        self._ai_debounce.stop()
+        req = builder(self.current)
+        if req is None:
+            self._show_local("Açıklama", "Bu işlev mevcut senaryo durumunda kullanılamaz "
+                             f"({status_message(self.current.result, set(self.current.inputs.restricted)) or 'hesap yok'}).")
+            return
+        self._submit_batch([req])
+
+    def compare_with_saved(self) -> None:
+        saved = self.db.latest()
+        if saved is None:
+            self._show_local("Senaryo kıyası", "Kıyas için önce bir senaryoyu \"Kaydet\" ile geçmişe ekleyin.")
+            return
+        self.request_manual(lambda c: ai_context.scenario_compare(saved, c))
+
+    def explain_term(self) -> None:
+        terms = list(prompts()["glossary"])
+        term, ok = QInputDialog.getItem(self, "Terim açıkla", "Terim:", terms, 0, True)
+        if ok and term.strip():
+            self.request_manual(lambda c: ai_context.term_explain(term.strip()))
+
+    def summarize_history(self) -> None:
+        req = ai_context.history_summary(self.db.list(limit=10))
+        if req is None:
+            self.history_tab.show_summary("Özetlenecek kayıt yok.", "")
+            return
+        self.history_tab.show_summary(req.fallback(), SOURCE_LABELS["pending" if self.ai.online
+                                                                    else "fallback_offline"])
+        self.ai.submit(req, ("history",))
+
+    def submit_nl(self) -> None:
+        sentence = self.nl_edit.text().strip()
+        if not sentence:
+            return
+        self.nl_status.setText("Çözümleniyor…" if self.ai.online else "")
+        self.ai.submit(ai_context.nl_input(sentence, self.inputs()), ("nl", sentence))
+
+    def _apply_nl(self, sentence: str, reply: AIReply) -> None:
+        obj, via = None, "AI"
+        if reply.source == "ai":
+            try:
+                obj = parse_json_reply(reply.text)
+            except Exception:
+                obj = None
+        if obj is None:
+            obj, via = ai_context.parse_nl_rule(sentence), "kural çözümleyici (AI çevrimdışı)"
+        merged, err = ai_context.validate_nl(obj, self.inputs())
+        if merged is None:
+            self.nl_status.setText(f"Uygulanamadı: {err}")
+            self.nl_status.setStyleSheet(f"color: {BAD};")
+            self._show_local("Doğal dil girişi", prompts()["by_id"]["nl_input"]["fallback_template"])
+            return
+        cur = self.inputs()
+        self.set_inputs(ScenarioInputs(
+            asset_id=merged["asset_id"], date=cur.date, s=merged["s"], L=merged["L"],
+            t=merged["t"], p=merged["p"], restricted=cur.restricted, ci_kind=cur.ci_kind,
+            parametric=cur.parametric, param_kwh=cur.param_kwh,
+        ))
+        self.nl_status.setText(f"Uygulandı · {via}")
+        self.nl_status.setStyleSheet(f"color: {GOOD};")
+
+    def _on_ai_reply(self, tag, reply: AIReply) -> None:
+        kind = tag[0]
+        if kind == "main":
+            _, gen, idx = tag
+            if gen != self._ai_gen or idx >= len(self._ai_slots):
+                return  # eski senaryoya ait yanıt
+            title = self._ai_slots[idx][0]
+            self._ai_slots[idx] = (title, reply.text, reply.source)
+            self._render_ai()
+        elif kind == "history":
+            note = ""
+            if reply.source == "fallback_offline":
+                note = prompts()["offline_message"] + "\n\n"
+            elif reply.source == "fallback_invalid":
+                note = prompts()["invalid_message"] + "\n\n"
+            self.history_tab.show_summary(note + reply.text, SOURCE_LABELS[reply.source])
+        elif kind == "nl":
+            self._apply_nl(tag[1], reply)
+
+    def closeEvent(self, event) -> None:
+        self.ai.shutdown()
+        super().closeEvent(event)
