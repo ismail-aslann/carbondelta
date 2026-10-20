@@ -27,6 +27,7 @@ APP_TITLE = "CarbonDelta — Emisyon Potansiyeli Karar Destek"
 FOOTER_TEXT = "Örnek yük, Balıkesir tesisi değil · Kaynak: EPİAŞ 2025, ETKB 2023, Zenodo"
 NON_SHIFTABLE_TEXT = "Bu yük kaydırılamaz (sürekli/kısıtlı süreç). Öneri üretilmez."
 CI_LABELS = {"tCO2": "tCO2", "tCO2esd": "tCO2-eşd"}
+DEMO_DATE = "2025-07-15"
 
 GOOD = "#2e9d4f"
 BAD = "#d03c3c"
@@ -148,6 +149,10 @@ class MainWindow(QMainWindow):
         root.addWidget(self.footer)
         self.setCentralWidget(central)
 
+        # Açılış: rapordaki demo senaryosu (comp_b, 15.07.2025, 03:00 → 18:00).
+        self._loading = True
+        self.date_edit.setDate(QDate.fromString(DEMO_DATE, "yyyy-MM-dd"))
+        self._loading = False
         self._on_machine_changed()
 
     # ------------------------------------------------------------------ UI
