@@ -90,6 +90,16 @@ def ci_24(date: str, kind: str = "tCO2") -> list[float]:
     return [float(row[col]) for row in _epias()[date]]
 
 
+def scenario_series(asset_id: str, date: str, kind: str = "tCO2",
+                    parametric_kwh: float | None = None) -> tuple[list[float], list[float]]:
+    """simulate() için (load_kwh, ci). Parametrik modda yük sabit kWh/saat."""
+    if parametric_kwh is None:
+        load = load_24(asset_id, date)
+    else:
+        load = [float(parametric_kwh)] * 24
+    return load, ci_24(date, kind)
+
+
 def mix_at(date: str, hour: int) -> dict:
     row = _epias()[date][hour]
     return {
