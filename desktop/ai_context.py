@@ -52,13 +52,14 @@ def _base(c) -> tuple[dict, dict]:
     if i.parametric:
         payload["parametric_kwh_per_hour"] = i.param_kwh
     if r.status in ("ok", "same_window", "no_load"):
+        # Alan adları LLM'in sayıları karıştırmaması için ne olduklarını açıkça söyler.
         payload.update({
-            "shifted_kwh": r.shifted_kwh,
-            "baseline_kg": r.baseline_kg,
-            "scenario_kg": r.scenario_kg,
-            "delta_pct": r.delta_pct,
-            "daily_kg": r.daily_kg,
-            "daily_delta_pct": r.daily_delta_pct,
+            "kaydirilan_enerji_kwh": r.shifted_kwh,
+            "standart_pencere_emisyonu_kg": r.baseline_kg,
+            "secilen_pencere_emisyonu_kg": r.scenario_kg,
+            "pencere_emisyon_degisimi_yuzde": r.delta_pct,
+            "makinenin_gunluk_toplam_emisyonu_kg_KAYDIRMA_ONCESI": r.daily_kg,
+            "gunluk_toplam_emisyona_etkisi_yuzde": r.daily_delta_pct,
         })
     if r.status == "ok":
         # LLM'in yönü ters anlatmaması için sonucun yönü açıkça metin olarak verilir.
@@ -119,7 +120,9 @@ def auto_requests(c) -> list[AIRequest]:
 
 
 def scenario_summary(c) -> AIRequest:
-    return _req("scenario_summary", *_base(c))
+    payload, display = _base(c)
+    _with_mix(c, payload, display)  # "neden" açıklaması için pencere karışımları
+    return _req("scenario_summary", payload, display)
 
 
 def reverse_effect_warn(c) -> AIRequest:

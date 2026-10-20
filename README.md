@@ -79,6 +79,17 @@ build.bat
 üretir. `dist\CarbonDelta` klasörünün tamamı kopyalanarak Python kurulu olmayan bir bilgisayarda
 çalıştırılabilir. İlk açılışta matplotlib font önbelleği oluşturulduğu için açılış birkaç saniye uzun sürer.
 
+## Bilgisayara kurma (masaüstü uygulaması)
+
+```bat
+kur.bat
+```
+
+`dist\CarbonDelta` klasörünü `%LOCALAPPDATA%\Programs\CarbonDelta` içine kopyalar, masaüstüne ve
+Başlat menüsüne **CarbonDelta** kısayolu ekler. Proje kökünde `.env` varsa kurulum klasörüne de
+kopyalanır (AI açık olur). Kodu güncelledikten sonra `build.bat` ve ardından `kur.bat` çalıştırmak
+yeterlidir; uygulama açıksa önce kapatın.
+
 ## AI ayarı (.env)
 
 `.env.example` dosyasını `.env` olarak kopyalayın:

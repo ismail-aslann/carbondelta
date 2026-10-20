@@ -104,6 +104,28 @@ def status_message(r: Result, restricted: set[int]) -> str:
     return ""
 
 
+def result_explanation(c: "Computation") -> str:
+    """Sonuç kartında büyük yüzdenin ne anlama geldiğini anlatan cümle (hesaptan, AI'sız)."""
+    i, r = c.inputs, c.result
+    unit = "kgCO2" if i.ci_kind == "tCO2" else "kgCO2-eşd"
+    src, tgt = fmt.window(i.s, i.L), fmt.window(i.t, i.L)
+    moved = f"{fmt.num(r.shifted_kwh)} kWh enerji (yükün %{fmt.num(i.p * 100, 0)} kadarı)"
+    if r.status == "ok":
+        if r.delta_pct <= 0:
+            what = (f"Bu yüzde, {src} aralığındaki {moved} {tgt} aralığında kullanılırsa "
+                    f"bu enerjinin emisyonunun {fmt.num(r.baseline_kg)} {unit} yerine "
+                    f"{fmt.num(r.scenario_kg)} {unit} olacağını gösterir.")
+        else:
+            what = (f"Bu yüzde, {src} aralığındaki {moved} {tgt} aralığına alınırsa "
+                    f"emisyonun {fmt.num(r.baseline_kg)} {unit} yerine {fmt.num(r.scenario_kg)} {unit} "
+                    f"olacağını, yani seçilen saatlerde şebekenin daha kirli olduğunu gösterir.")
+        return (f"{what} Makinenin o günkü toplam emisyonu açısından etkisi "
+                f"{fmt.pct(r.daily_delta_pct)}.")
+    if r.status == "same_window":
+        return "Yük aynı saatlerde kaldığı için emisyon değişmez."
+    return ""
+
+
 # Açıklama kartındaki kaynak etiketi: (metin, yazı rengi, zemin)
 SOURCE_CHIPS = {
     "ai": ("AI", theme.PRIMARY, theme.PRIMARY_SOFT),
@@ -396,8 +418,12 @@ class MainWindow(QMainWindow):
         self.delta_label.setObjectName("bigDelta")
         self.verdict_label = QLabel("")
         self.verdict_label.setWordWrap(True)
+        self.explain_label = QLabel("")
+        self.explain_label.setWordWrap(True)
+        self.explain_label.setStyleSheet(f"color: {theme.TEXT}; font-size: 9pt; line-height: 135%;")
         lay.addWidget(self.delta_label)
         lay.addWidget(self.verdict_label)
+        lay.addWidget(self.explain_label)
 
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
@@ -653,6 +679,9 @@ class MainWindow(QMainWindow):
             self.verdict_label.setText(status_message(r, set(c.inputs.restricted)))
         self.delta_label.setStyleSheet(f"color: {color};")
         self.verdict_label.setStyleSheet(f"color: {verdict_color}; font-weight: 600;")
+        text = result_explanation(c)
+        self.explain_label.setText(text)
+        self.explain_label.setVisible(bool(text))
 
         computed = r.status in ("ok", "same_window", "no_load")
         self.detail_labels["baseline"].setText(f"{fmt.num(r.baseline_kg)} {unit}" if computed else "—")
