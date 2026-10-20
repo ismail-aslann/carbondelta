@@ -23,6 +23,7 @@ from desktop.chart_widget import ChartWidget
 from desktop.history_db import HistoryDB
 from desktop.resources import resource_path
 from desktop.start_screen import StartScreen
+from desktop.tools_tabs import BestWindowTab, NLTab
 from desktop.tabs import CalcTab, HistoryTab, SourcesTab
 from engine import data
 from engine.best_window import best_window
@@ -184,14 +185,24 @@ class MainWindow(QMainWindow):
         body.setContentsMargins(14, 6, 14, 4)
         body.setSpacing(4)
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_scenario_tab(), "Senaryo")
+        self.scenario_tab = self._build_scenario_tab()
+        self.tabs.addTab(self.scenario_tab, "Senaryo")
+        self.best_tab = BestWindowTab(HourSpinBox)
+        self.best_tab.apply_requested.connect(self.apply_best_choice)
+        self.tabs.addTab(self.best_tab, "En Temiz Saat")
+        self.nl_tab = NLTab()
+        self.nl_tab.submit.connect(self.submit_nl_page)
+        self.nl_tab.open_requested.connect(self.open_nl_result)
+        self.tabs.addTab(self.nl_tab, "Doğal Dil")
         self.calc_tab = CalcTab()
         self.tabs.addTab(self.calc_tab, "Hesabı Göster")
         self.history_tab = HistoryTab(self.db)
         self.history_tab.restore_requested.connect(self.restore_history)
         self.history_tab.summarize_requested.connect(self.summarize_history)
         self.tabs.addTab(self.history_tab, "Geçmiş")
-        self.tabs.addTab(SourcesTab(), "Kaynaklar")
+        self.sources_tab = SourcesTab()
+        self.tabs.addTab(self.sources_tab, "Kaynaklar")
+        self.tabs.currentChanged.connect(self._on_tab_changed)
         body.addWidget(self.tabs, 1)
 
         self.footer = QLabel(FOOTER_TEXT)
@@ -677,7 +688,7 @@ class MainWindow(QMainWindow):
             parametric=h["mode"] == "parametric",
             param_kwh=h["param_kwh"] if h["param_kwh"] is not None else 50.0,
         ))
-        self.tabs.setCurrentIndex(0)
+        self.tabs.setCurrentWidget(self.scenario_tab)
 
     def _update_card(self, c: Computation) -> None:
         r = c.result
@@ -748,9 +759,9 @@ class MainWindow(QMainWindow):
         self.pages.setCurrentIndex(0)
         self.start.setFocus()
 
-    def _open_app(self, tab: int) -> None:
+    def _open_app(self, tab: QWidget) -> None:
         self.pages.setCurrentIndex(1)
-        self.tabs.setCurrentIndex(tab)
+        self.tabs.setCurrentWidget(tab)
 
     def _on_start_action(self, key: str) -> None:
         if key == "resume":
@@ -759,22 +770,75 @@ class MainWindow(QMainWindow):
                 self.restore_history(latest)
             else:
                 self.set_inputs(self._demo_inputs())
-            self._open_app(0)
+            self._open_app(self.scenario_tab)
         elif key == "new":
-            self._open_app(0)
+            self.new_scenario()
+            self._open_app(self.scenario_tab)
         elif key == "best":
-            self._open_app(0)
-            self.apply_best_window()
+            self._open_app(self.best_tab)
         elif key == "nl":
-            self._open_app(0)
-            self.nl_edit.setFocus()
-            self.nl_edit.selectAll()
+            self._open_app(self.nl_tab)
+            self.nl_tab.focus_input()
         elif key == "history":
-            self._open_app(2)
+            self._open_app(self.history_tab)
         elif key == "calc":
-            self._open_app(1)
+            self._open_app(self.calc_tab)
         elif key == "sources":
-            self._open_app(3)
+            self._open_app(self.sources_tab)
+
+    def new_scenario(self) -> None:
+        """Temiz başlangıç: makine ve gün korunur; kısıtlar, oran ve mod sıfırlanır."""
+        cur = self.inputs()
+        self.set_inputs(ScenarioInputs(cur.asset_id, cur.date, 3, 3, 18, 1.0))
+
+    def _on_tab_changed(self, _index: int) -> None:
+        if self.tabs.currentWidget() is self.best_tab:
+            i = self.inputs()
+            self.best_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.p, i.restricted)
+
+    def apply_best_choice(self, choice: dict) -> None:
+        cur = self.inputs()
+        self.set_inputs(ScenarioInputs(choice["asset_id"], choice["date"], choice["s"], choice["L"],
+                                       choice["t"], choice["p"], restricted=cur.restricted,
+                                       ci_kind=cur.ci_kind))
+        self.tabs.setCurrentWidget(self.scenario_tab)
+
+    def submit_nl_page(self, sentence: str) -> None:
+        self.ai.submit(ai_context.nl_input(sentence, self.inputs()), ("nlpage", sentence))
+
+    def _nl_merge(self, sentence: str, reply: AIReply) -> tuple[dict | None, str, str]:
+        obj, via = None, "AI"
+        if reply.source == "ai":
+            try:
+                obj = parse_json_reply(reply.text)
+            except Exception:
+                obj = None
+        if obj is None:
+            obj, via = ai_context.parse_nl_rule(sentence), "kural çözümleyici (AI çevrimdışı)"
+        merged, err = ai_context.validate_nl(obj, self.inputs())
+        return merged, err, via
+
+    def _apply_nl_page(self, sentence: str, reply: AIReply) -> None:
+        merged, err, via = self._nl_merge(sentence, reply)
+        if merged is None:
+            self.nl_tab.show_error(err)
+            return
+        cur = self.inputs()
+        merged["date"] = cur.date
+
+        def explain(m, mg, r):
+            c = Computation(ScenarioInputs(mg["asset_id"], mg["date"], mg["s"], mg["L"], mg["t"], mg["p"]),
+                            m, [], [], r)
+            return result_explanation(c) or status_message(r, set())
+
+        self.nl_tab.show_result(merged, via, explain)
+
+    def open_nl_result(self, merged: dict) -> None:
+        cur = self.inputs()
+        self.set_inputs(ScenarioInputs(merged["asset_id"], merged["date"], merged["s"], merged["L"],
+                                       merged["t"], merged["p"], restricted=cur.restricted,
+                                       ci_kind=cur.ci_kind))
+        self.tabs.setCurrentWidget(self.scenario_tab)
 
     # ------------------------------------------------------------------ AI
     def _start_batch(self, items: list[tuple[str, str, str]]) -> int:
@@ -907,7 +971,7 @@ class MainWindow(QMainWindow):
             t=merged["t"], p=merged["p"], restricted=cur.restricted, ci_kind=cur.ci_kind,
             parametric=cur.parametric, param_kwh=cur.param_kwh,
         ))
-        self.tabs.setCurrentIndex(0)
+        self.tabs.setCurrentWidget(self.scenario_tab)
         self._set_nl_status(f"✓ Uygulandı · {via}", "ok")
 
     def _on_ai_reply(self, tag, reply: AIReply) -> None:
@@ -923,6 +987,8 @@ class MainWindow(QMainWindow):
             self.history_tab.show_summary(reply.text, reply.source)
         elif kind == "nl":
             self._apply_nl(tag[1], reply)
+        elif kind == "nlpage":
+            self._apply_nl_page(tag[1], reply)
 
     def closeEvent(self, event) -> None:
         self.ai.shutdown()

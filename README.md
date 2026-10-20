@@ -32,7 +32,9 @@ gezilebilir). Üst banttaki "Ana sayfa" düğmesi bu ekrana döner. Tasarım ör
 
 Demo senaryosu: Kompresör (comp_b), 15.07.2025, 03:00–06:00 → 18:00–21:00, %100 → **−15,62 %**.
 
-Sekmeler: **Senaryo** (girdiler, grafik, sonuç, açıklama) · **Hesabı Göster** (formül, saat saat
+Sekmeler: **Senaryo** (girdiler, grafik, sonuç, açıklama) · **En Temiz Saat** (günün tüm geçerli
+hedef pencerelerinin emisyona göre sıralaması ve grafiği; seçileni senaryoya uygular) · **Doğal Dil**
+(cümle → anlaşılan senaryo ve önizleme → Senaryoda aç) · **Hesabı Göster** (formül, saat saat
 döküm, ETKB tablosu, CSV dışa aktarma) · **Geçmiş** (kayıtlı senaryolar; çift tık = geri yükle,
 Sil, Özetle) · **Kaynaklar**.
 
