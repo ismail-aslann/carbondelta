@@ -11,7 +11,8 @@ from PySide6.QtGui import QBrush, QColor, QIcon, QTextCharFormat, QValidator
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QComboBox, QDateEdit, QDoubleSpinBox, QFormLayout,
     QFrame, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMenu,
-    QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider, QSpinBox, QTabWidget,
+    QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider, QSpinBox, QStackedWidget,
+    QTabWidget,
     QTextBrowser,
     QToolButton, QVBoxLayout, QWidget,
 )
@@ -21,6 +22,7 @@ from desktop.ai_client import AIReply, AIRequest, AIService, parse_json_reply, p
 from desktop.chart_widget import ChartWidget
 from desktop.history_db import HistoryDB
 from desktop.resources import resource_path
+from desktop.start_screen import StartScreen
 from desktop.tabs import CalcTab, HistoryTab, SourcesTab
 from engine import data
 from engine.best_window import best_window
@@ -197,13 +199,21 @@ class MainWindow(QMainWindow):
         self.footer.setStyleSheet(f"color: {MUTED}; padding: 3px; font-size: 8.5pt;")
         body.addWidget(self.footer)
         root.addLayout(body, 1)
-        self.setCentralWidget(central)
+
+        # Başlangıç ekranı (0) ve uygulama (1)
+        self.start = StartScreen()
+        self.start.action.connect(self._on_start_action)
+        self.pages = QStackedWidget()
+        self.pages.addWidget(self.start)
+        self.pages.addWidget(central)
+        self.setCentralWidget(self.pages)
 
         # Açılış: rapordaki demo senaryosu (Kompresör, 15.07.2025, 03:00 → 18:00).
         self._loading = True
         self.date_edit.setDate(QDate.fromString(DEMO_DATE, "yyyy-MM-dd"))
         self._loading = False
         self._on_machine_changed()
+        self.go_home()
 
     # ------------------------------------------------------------------ UI
     def _build_header(self) -> QWidget:
@@ -228,6 +238,12 @@ class MainWindow(QMainWindow):
         titles.addWidget(t)
         titles.addWidget(st)
         lay.addLayout(titles)
+        lay.addSpacing(18)
+        self.home_button = QPushButton("⌂  Ana sayfa")
+        self.home_button.setObjectName("nlButton")
+        self.home_button.setToolTip("Başlangıç ekranına dön")
+        self.home_button.clicked.connect(self.go_home)
+        lay.addWidget(self.home_button)
         lay.addStretch(1)
 
         nl_box = QVBoxLayout()
@@ -703,6 +719,62 @@ class MainWindow(QMainWindow):
         self._debounce.stop()
         self.recompute(auto_ai=False)
         self.request_manual(ai_context.best_window_explain)
+
+    # ------------------------------------------------------------ başlangıç
+    def refresh_start(self) -> None:
+        """Başlangıç ekranındaki eğriyi, son senaryo kartını ve durum satırını günceller."""
+        self.start.set_curve(data.ci_24(DEMO_DATE))
+        self.start.set_status(self.ai.online, len(data.machines()))
+        latest = self.db.latest()
+        if latest is not None and latest["delta_pct"] is not None:
+            name = data.machine(latest["asset_id"])["name"]
+            self.start.set_resume("Son senaryo", f"{name} · {fmt.hour(latest['s'])} → {fmt.hour(latest['t'])}",
+                                  fmt.pct(latest["delta_pct"]), latest["delta_pct"] <= 0)
+            return
+        # Kayıt yoksa demo senaryo; yüzde motordan hesaplanır.
+        demo = self._demo_inputs()
+        load, ci = self._series(demo)
+        r = simulate(load, ci, demo.s, demo.L, demo.t, demo.p)
+        name = data.machine(demo.asset_id)["name"]
+        self.start.set_resume("Demo senaryo", f"{name} · {fmt.hour(demo.s)} → {fmt.hour(demo.t)}",
+                              fmt.pct(r.delta_pct), (r.delta_pct or 0) <= 0)
+
+    @staticmethod
+    def _demo_inputs() -> ScenarioInputs:
+        return ScenarioInputs("comp_b", DEMO_DATE, 3, 3, 18, 1.0)
+
+    def go_home(self) -> None:
+        self.refresh_start()
+        self.pages.setCurrentIndex(0)
+        self.start.setFocus()
+
+    def _open_app(self, tab: int) -> None:
+        self.pages.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(tab)
+
+    def _on_start_action(self, key: str) -> None:
+        if key == "resume":
+            latest = self.db.latest()
+            if latest is not None and latest["delta_pct"] is not None:
+                self.restore_history(latest)
+            else:
+                self.set_inputs(self._demo_inputs())
+            self._open_app(0)
+        elif key == "new":
+            self._open_app(0)
+        elif key == "best":
+            self._open_app(0)
+            self.apply_best_window()
+        elif key == "nl":
+            self._open_app(0)
+            self.nl_edit.setFocus()
+            self.nl_edit.selectAll()
+        elif key == "history":
+            self._open_app(2)
+        elif key == "calc":
+            self._open_app(1)
+        elif key == "sources":
+            self._open_app(3)
 
     # ------------------------------------------------------------------ AI
     def _start_batch(self, items: list[tuple[str, str, str]]) -> int:

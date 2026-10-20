@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CarbonDelta Başlangıç</title>
+<style>
+  :root {
+    --bg-1: #0d4a3d;
+    --bg-2: #062720;
+    --mint: #5fe0b0;
+    --mint-soft: rgba(95, 224, 176, .14);
+    --text: #f2fbf7;
+    --muted: #9fc4b7;
+    --line: rgba(255, 255, 255, .09);
+    --row: rgba(255, 255, 255, .045);
+    --row-hover: rgba(255, 255, 255, .09);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    background: radial-gradient(1100px 700px at 50% 0%, var(--bg-1) 0%, var(--bg-2) 70%);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* Pencere başlık çubuğu (yalnızca örnekte; gerçek uygulamada Windows çizer) */
+  .titlebar {
+    height: 32px; flex: none; background: #fff; color: #333; font-size: 12px;
+    display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  }
+  .titlebar .win { margin-left: auto; letter-spacing: 18px; color: #555; }
+
+  /* Arka plan: 15.07.2025 gününün 24 saatlik karbon yoğunluğu (EPİAŞ) */
+  .curve { position: absolute; inset: 32px 0 0 0; width: 100%; height: calc(100% - 32px);
+           pointer-events: none; opacity: .55; }
+  .grid { position: absolute; inset: 32px 0 0 0; pointer-events: none;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 60px 60px; opacity: .35;
+    mask-image: radial-gradient(ellipse at 50% 35%, #000 0%, transparent 70%); }
+
+  main { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center;
+         justify-content: center; padding: 10px 16px 0; }
+
+  /* Logo + başlık */
+  .brand { text-align: center; margin-bottom: 18px; animation: up .6s ease both; }
+  .logo { position: relative; width: 78px; height: 78px; margin: 0 auto 12px; border-radius: 20px;
+    background: linear-gradient(180deg, #1c8a69, #0b4c40); display: grid; place-items: center;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.12) inset, 0 12px 40px rgba(95,224,176,.25); }
+  .logo::after { content: ""; position: absolute; inset: -18px; border-radius: 34px; z-index: -1;
+    background: radial-gradient(circle, rgba(95,224,176,.35), transparent 65%); filter: blur(6px); }
+  h1 { margin: 0; font-size: 44px; font-weight: 700; letter-spacing: -1px; line-height: 1.05; }
+  h1 em { font-style: normal; color: var(--mint); }
+  .tagline { margin: 8px 0 0; color: var(--muted); font-size: 15.5px; }
+
+  .panel { width: min(660px, 100%); }
+
+  /* Kaldığınız yerden devam */
+  .resume { display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin-bottom: 12px;
+    border-radius: 14px; cursor: pointer; text-decoration: none; color: inherit;
+    background: linear-gradient(90deg, rgba(95,224,176,.20), rgba(95,224,176,.06));
+    border: 1px solid rgba(95,224,176,.35); animation: up .6s .08s ease both;
+    transition: transform .15s ease, border-color .15s ease; }
+  .resume:hover { transform: translateY(-1px); border-color: var(--mint); }
+  .resume .play { width: 38px; height: 38px; border-radius: 50%; background: var(--mint); color: #063a2e;
+    display: grid; place-items: center; flex: none; }
+  .resume .t { flex: 1; min-width: 0; }
+  .resume .t small { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase;
+    letter-spacing: .7px; }
+  .resume .t b { display: block; font-size: 15px; font-weight: 600; margin-top: 1px; }
+  .resume .delta { font-size: 22px; font-weight: 700; color: var(--mint); }
+
+  /* Bölüm listesi */
+  .list { border-radius: 14px; overflow: hidden; border: 1px solid var(--line);
+    background: rgba(4, 30, 24, .55); backdrop-filter: blur(6px); }
+  .row { display: flex; align-items: center; gap: 14px; padding: 11px 16px; cursor: pointer;
+    border-top: 1px solid var(--line); background: var(--row); outline: none;
+    transition: background .12s ease; animation: up .5s ease both; }
+  .row:first-child { border-top: none; }
+  .row:hover, .row.sel { background: var(--row-hover); }
+  .row.sel { box-shadow: inset 3px 0 0 var(--mint); }
+  .row .ico { width: 38px; height: 38px; flex: none; border-radius: 10px; display: grid; place-items: center;
+    background: var(--mint-soft); color: var(--mint); }
+  .row .t { flex: 1; min-width: 0; }
+  .row .t b { display: block; font-size: 15px; font-weight: 600; }
+  .row .t small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .tag { font-size: 11.5px; font-weight: 600; color: var(--mint); background: var(--mint-soft);
+    padding: 2px 9px; border-radius: 999px; }
+  .kbd { min-width: 24px; height: 24px; padding: 0 6px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    display: grid; place-items: center; color: var(--muted); border: 1px solid rgba(255,255,255,.18);
+    background: rgba(255,255,255,.04); }
+  .row:hover .kbd, .row.sel .kbd { color: var(--text); border-color: var(--mint); }
+
+  .row:nth-child(1) { animation-delay: .14s } .row:nth-child(2) { animation-delay: .18s }
+  .row:nth-child(3) { animation-delay: .22s } .row:nth-child(4) { animation-delay: .26s }
+  .row:nth-child(5) { animation-delay: .30s } .row:nth-child(6) { animation-delay: .34s }
+
+  .hint { margin-top: 10px; text-align: center; font-size: 12px; color: var(--muted); animation: up .5s .4s ease both; }
+  .hint .kbd { display: inline-grid; margin: 0 2px; height: 20px; min-width: 20px; font-size: 11px; }
+
+  footer { position: relative; flex: none; display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; padding: 10px 20px 12px; font-size: 12px; color: var(--muted); }
+  .status { display: flex; gap: 14px; }
+  .status span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+
+  .toast { position: fixed; left: 50%; bottom: 54px; transform: translate(-50%, 20px); opacity: 0;
+    background: #fff; color: #0b3d33; font-weight: 600; font-size: 13px; padding: 9px 16px;
+    border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.25); transition: all .2s ease; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @keyframes up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <svg width="16" height="16" viewBox="0 0 96 96" aria-hidden="true"><rect width="96" height="96" rx="20" fill="#16785c"/><path d="M48 18 L82 78 H14 Z" fill="none" stroke="#fff" stroke-width="9" stroke-linejoin="round"/></svg>
+  CarbonDelta — Emisyon Potansiyeli Karar Destek
+  <span class="win">—▢✕</span>
+</div>
+
+<div class="grid"></div>
+<svg class="curve" viewBox="0 0 1440 734" preserveAspectRatio="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5fe0b0" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#5fe0b0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0,300)">
+    <polygon fill="url(#fill)" points="40,434 40,217 99,163 158,128 217,113 277,100 336,93 395,80 454,115 513,194 572,231 631,242 690,235 750,246 809,237 868,243 927,250 986,273 1045,284 1104,292 1163,313 1223,330 1282,319 1341,280 1400,246 1400,434"/>
+    <polyline fill="none" stroke="#5fe0b0" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"
+      points="40,217 99,163 158,128 217,113 277,100 336,93 395,80 454,115 513,194 572,231 631,242 690,235 750,246 809,237 868,243 927,250 986,273 1045,284 1104,292 1163,313 1223,330 1282,319 1341,280 1400,246"/>
+    <circle cx="395" cy="80" r="5" fill="#ff8a7a"/>
+    <text x="405" y="70" fill="#ffb3a8" font-size="12" font-family="Segoe UI">06:00 · en kirli</text>
+    <circle cx="1223" cy="330" r="5" fill="#5fe0b0"/>
+    <text x="1150" y="355" fill="#9fe9cc" font-size="12" font-family="Segoe UI">20:00 · en temiz</text>
+  </g>
+</svg>
+
+<main>
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <svg width="50" height="50" viewBox="0 0 100 100">
+        <path d="M50 12 L88 80 H12 Z" fill="none" stroke="#fff" stroke-width="9" stroke-linejoin="round"/>
+        <path d="M50 38 V62" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+        <path d="M39 55 L50 67 L61 55" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h1>Carbon<em>Delta</em></h1>
+    <p class="tagline">Aynı işi daha temiz saatte yap — şebeke emisyonuna etkisini anında gör.</p>
+  </div>
+
+  <div class="panel">
+    <a class="resume" data-msg="Son senaryo açılıyor…">
+      <span class="play"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
+      <span class="t">
+        <small>Kaldığınız yerden devam edin</small>
+        <b>Kompresör · 15.07.2025 · 03:00–06:00 → 18:00–21:00</b>
+      </span>
+      <span class="delta">−15,62 %</span>
+    </a>
+
+    <div class="list" role="listbox" aria-label="Bölümler">
+      <div class="row sel" tabindex="0" data-msg="Senaryo ekranı açılıyor…">
+        <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>
+        <span class="t"><b>Yeni senaryo</b><small>Makine, gün ve saat seçip yük kaydırmanın emisyon etkisini hesaplayın</small></span>
+        <span class="kbd">1</span>
+      </div>
+      <div class="row" tabindex="-1" data-msg="En temiz saat aranıyor…">
+        <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+        <span class="t"><b>En temiz saati bul</b><small>Makineyi ve günü seçin, uygulama en düşük emisyonlu pencereyi önersin</small></span>
+        <span class="kbd">2</span>
+      </div>
+      <div class="row" tabindex="-1" data-msg="Doğal dil kutusu açılıyor…">
+        <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></span>
+        <span class="t"><b>Doğal dille sor</b><small>“Presi %50 oranla 2 saat 21'e kaydır” gibi yazın</small></span>
+        <span class="tag">AI</span>
+        <span class="kbd">3</span>
+      </div>
+      <div class="row" tabindex="-1" data-msg="Geçmiş açılıyor…">
+        <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <span class="t"><b>Geçmiş senaryolar</b><small>Kaydedilenleri görün, geri yükleyin, karşılaştırın veya özetletin</small></span>
+        <span class="tag">4 kayıt</span>
+        <span class="kbd">4</span>
+      </div>
+      <div class="row" tabindex="-1" data-msg="Hesap dökümü açılıyor…">
+        <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
+        <span class="t"><b>Hesap nasıl yapılıyor?</b><small>Formül, saat saat döküm, ETKB emisyon faktörleri ve CSV dışa aktarma</small></span>
+        <span class="kbd">5</span>
+      </div>
+      <div class="row" tabindex="-1" data-msg="Veri kaynakları açılıyor…">
+        <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>
+        <span class="t"><b>Veri kaynakları</b><small>EPİAŞ 2025, ETKB 2023, Zenodo ve “örnek yük” notu</small></span>
+        <span class="kbd">6</span>
+      </div>
+    </div>
+    <div class="hint">Gezinmek için <span class="kbd">↑</span><span class="kbd">↓</span> · açmak için <span class="kbd">Enter</span> ya da numarasına basın</div>
+  </div>
+</main>
+
+<footer>
+  <span>Örnek yük, Balıkesir tesisi değil · Kaynak: EPİAŞ 2025, ETKB 2023, Zenodo</span>
+  <span class="status"><span><i class="dot"></i>AI açık</span><span>7 makine</span><span>İnternetsiz hesap</span></span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const rows = [...document.querySelectorAll('.row')];
+  const toast = document.getElementById('toast');
+  let sel = 0, timer;
+  function select(i) {
+    sel = (i + rows.length) % rows.length;
+    rows.forEach((r, k) => { r.classList.toggle('sel', k === sel); r.tabIndex = k === sel ? 0 : -1; });
+    rows[sel].focus({ preventScroll: true });
+  }
+  function open(el) {
+    toast.textContent = el.dataset.msg + '  (örnek)';
+    toast.classList.add('show');
+    clearTimeout(timer); timer = setTimeout(() => toast.classList.remove('show'), 1600);
+  }
+  rows.forEach((r, i) => {
+    r.addEventListener('mouseenter', () => select(i));
+    r.addEventListener('click', () => open(r));
+  });
+  document.querySelector('.resume').addEventListener('click', e => open(e.currentTarget));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { select(sel + 1); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { select(sel - 1); e.preventDefault(); }
+    else if (e.key === 'Enter') open(rows[sel]);
+    else if (/^[1-6]$/.test(e.key)) { select(+e.key - 1); open(rows[sel]); }
+  });
+</script>
+</body>
+</html>

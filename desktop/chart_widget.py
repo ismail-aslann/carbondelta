@@ -1,9 +1,13 @@
 """24 saatlik karbon yoğunluğu + makine yükü grafiği (matplotlib QtAgg)."""
 from __future__ import annotations
 
+import warnings
+
 import matplotlib
 
 matplotlib.use("QtAgg")
+# Gizli sayfadayken (başlangıç ekranı açıkken) grafik sıfır boyutlu olabilir; zararsız uyarı.
+warnings.filterwarnings("ignore", message="constrained_layout not applied")
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402

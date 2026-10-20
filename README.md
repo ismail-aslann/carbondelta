@@ -27,7 +27,10 @@ pip install -r requirements.txt
 python -m desktop
 ```
 
-Açılışta demo senaryosu yüklenir: Kompresör (comp_b), 15.07.2025, 03:00–06:00 → 18:00–21:00, %100 → **−15,62 %**.
+Uygulama başlangıç ekranıyla açılır (logo, son/demo senaryo kartı ve bölüm listesi; ↑ ↓ ve Enter ile
+gezilebilir). Üst banttaki "Ana sayfa" düğmesi bu ekrana döner. Tasarım örnekleri `mockups/` klasöründedir.
+
+Demo senaryosu: Kompresör (comp_b), 15.07.2025, 03:00–06:00 → 18:00–21:00, %100 → **−15,62 %**.
 
 Sekmeler: **Senaryo** (girdiler, grafik, sonuç, açıklama) · **Hesabı Göster** (formül, saat saat
 döküm, ETKB tablosu, CSV dışa aktarma) · **Geçmiş** (kayıtlı senaryolar; çift tık = geri yükle,
