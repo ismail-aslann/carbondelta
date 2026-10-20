@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import date as Date
 
 from PySide6.QtCore import QDate, QSize, Qt, QTimer
-from PySide6.QtGui import QBrush, QColor, QIcon, QTextCharFormat, QValidator
+from PySide6.QtGui import QBrush, QColor, QIcon, QKeySequence, QShortcut, QTextCharFormat, QValidator
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QComboBox, QDateEdit, QDoubleSpinBox, QFormLayout,
     QFrame, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMenu,
@@ -24,6 +24,8 @@ from desktop.history_db import HistoryDB
 from desktop.resources import resource_path
 from desktop.start_screen import StartScreen
 from desktop.tools_tabs import BestWindowTab, NLTab
+from desktop.guide_tab import GuideTab
+from desktop.keyboard import DateEdit, KeyboardHelper
 from desktop.tabs import CalcTab, HistoryTab, SourcesTab
 from engine import data
 from engine.best_window import best_window
@@ -200,6 +202,8 @@ class MainWindow(QMainWindow):
         self.history_tab.restore_requested.connect(self.restore_history)
         self.history_tab.summarize_requested.connect(self.summarize_history)
         self.tabs.addTab(self.history_tab, "Geçmiş")
+        self.guide_tab = GuideTab()
+        self.tabs.addTab(self.guide_tab, "Kılavuz")
         self.sources_tab = SourcesTab()
         self.tabs.addTab(self.sources_tab, "Kaynaklar")
         self.tabs.currentChanged.connect(self._on_tab_changed)
@@ -224,6 +228,7 @@ class MainWindow(QMainWindow):
         self.date_edit.setDate(QDate.fromString(DEMO_DATE, "yyyy-MM-dd"))
         self._loading = False
         self._on_machine_changed()
+        self._install_keyboard()
         self.go_home()
 
     # ------------------------------------------------------------------ UI
@@ -252,7 +257,7 @@ class MainWindow(QMainWindow):
         lay.addSpacing(18)
         self.home_button = QPushButton("⌂  Ana sayfa")
         self.home_button.setObjectName("nlButton")
-        self.home_button.setToolTip("Başlangıç ekranına dön")
+        self.home_button.setToolTip("Başlangıç ekranına dön (Esc)")
         self.home_button.clicked.connect(self.go_home)
         lay.addWidget(self.home_button)
         lay.addStretch(1)
@@ -331,7 +336,7 @@ class MainWindow(QMainWindow):
         self.machine_combo.currentIndexChanged.connect(self._on_machine_changed)
         form.addRow("Makine", self.machine_combo)
 
-        self.date_edit = QDateEdit()
+        self.date_edit = DateEdit()
         self.date_edit.setCalendarPopup(True)
         self.date_edit.setDisplayFormat("dd.MM.yyyy")
         self.date_edit.dateChanged.connect(self._on_date_changed)
@@ -422,6 +427,8 @@ class MainWindow(QMainWindow):
             chip.setFixedHeight(24)
             chip.toggled.connect(self.schedule)
             grid.addWidget(chip, h // 8, h % 8)
+            # Sekme zincirine yalnızca ilk çip girer; diğerlerine oklarla geçilir.
+            chip.setFocusPolicy(Qt.StrongFocus if h == 0 else Qt.ClickFocus)
             self.hour_chips.append(chip)
         rb_lay.addLayout(grid)
         v.addWidget(self.restricted_box)
@@ -763,11 +770,13 @@ class MainWindow(QMainWindow):
     def go_home(self) -> None:
         self.refresh_start()
         self.pages.setCurrentIndex(0)
+        self.start._select(0)
         self.start.setFocus()
 
     def _open_app(self, tab: QWidget) -> None:
         self.pages.setCurrentIndex(1)
         self.tabs.setCurrentWidget(tab)
+        QTimer.singleShot(0, self._focus_current_tab)
 
     def _on_start_action(self, key: str) -> None:
         if key == "resume":
@@ -789,6 +798,8 @@ class MainWindow(QMainWindow):
             self._open_app(self.history_tab)
         elif key == "calc":
             self._open_app(self.calc_tab)
+        elif key == "guide":
+            self.open_guide()
         elif key == "sources":
             self._open_app(self.sources_tab)
 
@@ -801,6 +812,66 @@ class MainWindow(QMainWindow):
         if self.tabs.currentWidget() is self.best_tab:
             i = self.inputs()
             self.best_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.p, i.restricted)
+        QTimer.singleShot(0, self._focus_current_tab)
+
+    def _focus_current_tab(self) -> None:
+        """Faresiz kullanım: her sekmede klavye odağı mantıklı bir öğede başlar."""
+        if self.pages.currentIndex() != 1:
+            return
+        tab = self.tabs.currentWidget()
+        if tab is self.scenario_tab:
+            self.machine_combo.setFocus(Qt.TabFocusReason)
+        elif tab is self.best_tab:
+            self.best_tab.table.setFocus(Qt.TabFocusReason)
+        elif tab is self.nl_tab:
+            self.nl_tab.focus_input()
+        elif tab is self.calc_tab:
+            self.calc_tab.table.setFocus(Qt.TabFocusReason)
+        elif tab is self.history_tab:
+            self.history_tab.table.setFocus(Qt.TabFocusReason)
+        elif tab is self.guide_tab:
+            self.guide_tab.focus_default()
+        else:
+            tab.setFocus(Qt.TabFocusReason)
+
+    # --------------------------------------------------------------- klavye
+    def _install_keyboard(self) -> None:
+        self.kbd = KeyboardHelper(self)
+        QApplication.instance().installEventFilter(self.kbd)
+        self.kbd.register_grid(self.hour_chips, 8)
+
+        def sc(keys: str, fn, app_only: bool = False) -> None:
+            def run():
+                if app_only and self.pages.currentIndex() != 1:
+                    return
+                fn()
+            QShortcut(QKeySequence(keys), self, activated=run, context=Qt.WindowShortcut)
+
+        sc("Esc", self._on_escape)
+        sc("F1", self.open_guide)
+        for n in range(self.tabs.count()):
+            sc(f"Ctrl+{n + 1}", lambda n=n: self._open_app(self.tabs.widget(n)))
+        sc("Ctrl+Tab", lambda: self._cycle_tab(1), app_only=True)
+        sc("Ctrl+Shift+Tab", lambda: self._cycle_tab(-1), app_only=True)
+        sc("Ctrl+Backtab", lambda: self._cycle_tab(-1), app_only=True)
+        sc("Ctrl+S", self.save_current, app_only=True)
+        sc("Ctrl+B", self._best_shortcut, app_only=True)
+
+    def _on_escape(self) -> None:
+        if self.pages.currentIndex() == 1:
+            self.go_home()
+
+    def open_guide(self, section: str | None = None) -> None:
+        self._open_app(self.guide_tab)
+        if section:
+            self.guide_tab.show_section(section)
+
+    def _cycle_tab(self, step: int) -> None:
+        self.tabs.setCurrentIndex((self.tabs.currentIndex() + step) % self.tabs.count())
+
+    def _best_shortcut(self) -> None:
+        self.tabs.setCurrentWidget(self.scenario_tab)
+        self.apply_best_window()
 
     def apply_best_choice(self, choice: dict) -> None:
         cur = self.inputs()

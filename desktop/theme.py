@@ -153,6 +153,17 @@ QScrollArea {{ background: transparent; border: none; }}
 QScrollArea > QWidget > QWidget {{ background: transparent; }}
 QSplitter::handle {{ background: transparent; }}
 
+/* Klavye odağı: faresiz kullanımda seçili öğe belirgin */
+QPushButton:focus, QToolButton:focus {{ border: 2px solid {PRIMARY}; padding: 5px 11px; }}
+QPushButton#primary:focus {{ border: 2px solid #0b3d33; }}
+QPushButton#chip:focus {{ border: 2px solid {PRIMARY}; padding: 0; }}
+QPushButton#chip:checked:focus {{ border: 2px solid #7a1f1f; }}
+QPushButton#nlButton:focus {{ border: 2px solid white; }}
+QCheckBox:focus, QRadioButton:focus {{ background: {PRIMARY_SOFT}; border-radius: 4px; }}
+QSlider:focus {{ background: {PRIMARY_SOFT}; border-radius: 4px; }}
+QTableWidget:focus, QListWidget:focus {{ border: 2px solid {PRIMARY_SOFT}; }}
+QTextBrowser:focus {{ border: 1px solid {PRIMARY_SOFT}; }}
+
 /* Kaydırma çubukları: ince, yuvarlak */
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
 QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px; }}

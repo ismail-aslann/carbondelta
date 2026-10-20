@@ -11,7 +11,7 @@ matplotlib.use("QtAgg")
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 from matplotlib.ticker import FuncFormatter  # noqa: E402
-from PySide6.QtCore import QDate, Qt, QTimer, Signal  # noqa: E402
+from PySide6.QtCore import QDate, QEvent, Qt, QTimer, Signal  # noqa: E402
 from PySide6.QtGui import QColor  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
     QAbstractItemView, QComboBox, QDateEdit, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (  # noqa: E402
 )
 
 from desktop import delti, fmt, theme  # noqa: E402
+from desktop.keyboard import DateEdit  # noqa: E402
 from desktop.tabs import _item, _table  # noqa: E402
 from engine import data  # noqa: E402
 from engine.best_window import scan_windows  # noqa: E402
@@ -108,7 +109,7 @@ class BestWindowTab(QWidget):
         for m in data.machines():
             if m["shiftable"]:
                 self.machine.addItem(m["name"], m["id"])
-        self.date = QDateEdit()
+        self.date = DateEdit()
         self.date.setCalendarPopup(True)
         self.date.setDisplayFormat("dd.MM.yyyy")
         self.s = hour_spin_cls()
@@ -155,9 +156,10 @@ class BestWindowTab(QWidget):
         h.setSectionResizeMode(QHeaderView.Stretch)
         h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table.cellDoubleClicked.connect(lambda r, _c: self._apply_row(r))
+        self.table.installEventFilter(self)
         tl.addWidget(self.table, 1)
         btns = QHBoxLayout()
-        btns.addWidget(theme.muted("Satıra çift tıklayın veya seçip uygulayın."), 1)
+        btns.addWidget(theme.muted("↑ ↓ ile seçip Enter'a basın ya da satıra çift tıklayın."), 1)
         self.apply_button = QPushButton("Seçili saati senaryoya uygula")
         self.apply_button.setObjectName("primary")
         self.apply_button.clicked.connect(lambda: self._apply_row(self._selected_row()))
@@ -271,6 +273,12 @@ class BestWindowTab(QWidget):
         self.summary.setText(text)
         by_t = sorted(((t, r.delta_pct or 0.0) for t, r in ranked), key=lambda x: x[0])
         self.chart.update_chart(by_t, best_t, i["s"])
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj is self.table and event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self._apply_row(self._selected_row())
+            return True
+        return super().eventFilter(obj, event)
 
     def _selected_row(self) -> int:
         items = self.table.selectedItems()
@@ -456,3 +464,5 @@ class NLTab(QWidget):
         self.avatar.setPixmap(delti.pixmap("ready", 56, self._dpr))
         self._show_answer(f"<b>Anladım:</b> {what}<br>{effect}", "ready",
                           explanation_fn(m, merged, r), f"Çözümleyen: {via}", True)
+        if self.edit.hasFocus():
+            self.open_button.setFocus(Qt.TabFocusReason)  # Enter → Senaryoya git

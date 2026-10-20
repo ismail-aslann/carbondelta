@@ -28,6 +28,8 @@ _SVG = {
     "chat": '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
     "clock": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     "doc": '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>',
+    "book": '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5V5.5"/>'
+            '<path d="M9 8h7M9 12h5"/>',
     "db": '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/>'
           '<path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
     "play": None,
@@ -40,6 +42,7 @@ ITEMS = [
     ("nl", "Delti'ye sor", "Yazarak senaryo kur", "delti"),
     ("history", "Geçmiş", "Kayıtlı senaryolar", "clock"),
     ("calc", "Hesap dökümü", "Formül ve tablolar", "doc"),
+    ("guide", "Kullanma kılavuzu", "Her şey adım adım · F1", "book"),
     ("sources", "Kaynaklar", "EPİAŞ · ETKB · Zenodo", "db"),
 ]
 
@@ -58,6 +61,7 @@ QFrame#resume {{
     border: 1px solid rgba(95,224,176,0.40); border-radius: 12px;
 }}
 QFrame#resume:hover {{ border-color: {MINT}; }}
+QFrame#resume[sel="true"] {{ border: 2px solid {MINT}; }}
 QFrame#list {{ background: rgba(4,30,24,0.62); border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; }}
 QFrame#row {{ background: transparent; border: none; border-left: 3px solid transparent; }}
 QFrame#row[sep="true"] {{ border-top: 1px solid rgba(255,255,255,0.09); }}
@@ -173,6 +177,7 @@ class StartScreen(QWidget):
         self.resume_delta.setStyleSheet(f"color: {MINT}; font-size: 14pt; font-weight: 700;")
         rl.addWidget(self.resume_delta)
         self.resume.clicked.connect(lambda: self.action.emit("resume"))
+        self.resume.hovered.connect(lambda: self._select(-1))
         col.addWidget(self.resume, 0, Qt.AlignHCenter)
         col.addSpacing(10)
 
@@ -217,7 +222,7 @@ class StartScreen(QWidget):
         col.addWidget(lst, 0, Qt.AlignHCenter)
         col.addSpacing(10)
 
-        hint = QLabel("↑ ↓ seç  ·  Enter aç")
+        hint = QLabel("↑ ↓ seç  ·  Enter aç  ·  F1 kılavuz  ·  Esc ana sayfa")
         hint.setObjectName("hint")
         hint.setAlignment(Qt.AlignCenter)
         col.addWidget(hint, 0, Qt.AlignHCenter)
@@ -256,11 +261,16 @@ class StartScreen(QWidget):
 
     # ---------------------------------------------------------- seçim/klavye
     def _select(self, i: int) -> None:
-        self._sel = i % len(self.rows)
-        for k, row in enumerate(self.rows):
+        """-1 = son senaryo kartı, 0.. = liste satırları (döngüsel)."""
+        n = len(self.rows)
+        self._sel = (i + 1) % (n + 1) - 1
+        for k, row in enumerate([self.resume] + self.rows, start=-1):
             row.setProperty("sel", k == self._sel)
             row.style().unpolish(row)
             row.style().polish(row)
+
+    def _activate(self) -> None:
+        self.action.emit("resume" if self._sel < 0 else ITEMS[self._sel][0])
 
     def keyPressEvent(self, e) -> None:
         key = e.key()
@@ -268,13 +278,18 @@ class StartScreen(QWidget):
             self._select(self._sel + 1)
         elif key == Qt.Key_Up:
             self._select(self._sel - 1)
-        elif key in (Qt.Key_Return, Qt.Key_Enter):
-            self.action.emit(ITEMS[self._sel][0])
-        elif Qt.Key_1 <= key <= Qt.Key_6:
+        elif key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+            self._activate()
+        elif Qt.Key_1 <= key < Qt.Key_1 + len(ITEMS):
             self._select(key - Qt.Key_1)
-            self.action.emit(ITEMS[self._sel][0])
+            self._activate()
         else:
             super().keyPressEvent(e)
+
+    def focusNextPrevChild(self, _next: bool) -> bool:
+        """Tab da ↑ ↓ gibi davranır; odak başlangıç ekranından kaçmaz."""
+        self._select(self._sel + (1 if _next else -1))
+        return True
 
     # -------------------------------------------------------------- çizim
     def paintEvent(self, _e) -> None:

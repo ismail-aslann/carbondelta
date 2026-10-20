@@ -27,6 +27,10 @@ pip install -r requirements.txt
 python -m desktop
 ```
 
+Uygulama fare olmadan tamamen klavyeyle kullanılabilir: **Esc** ana sayfa, **F1** kullanma kılavuzu,
+**Ctrl+1…7** sekmeler, **Tab** alanlar, **↑ ↓** değer/seçim, **Enter** düğme/satır, **Ctrl+S** kaydet,
+**Ctrl+B** en iyi saat. Tam liste uygulamadaki *Kılavuz* sekmesindedir.
+
 Uygulama başlangıç ekranıyla açılır (logo, son/demo senaryo kartı ve bölüm listesi; ↑ ↓ ve Enter ile
 gezilebilir). Üst banttaki "Ana sayfa" düğmesi bu ekrana döner. Tasarım örnekleri `mockups/` klasöründedir.
 

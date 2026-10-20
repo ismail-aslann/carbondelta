@@ -4,7 +4,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView, QFileDialog, QGridLayout, QHBoxLayout, QHeaderView, QLabel, QMessageBox,
@@ -90,6 +90,7 @@ def _table(headers: list[str]) -> QTableWidget:
     t.setAlternatingRowColors(True)
     t.setShowGrid(False)
     t.setFocusPolicy(Qt.NoFocus)
+    t.setTabKeyNavigation(False)  # Tab tablodan çıkar (faresiz kullanımda tuzak olmasın)
     t.setSelectionMode(QAbstractItemView.NoSelection)
     t.horizontalHeader().setHighlightSections(False)
     return t
@@ -181,6 +182,7 @@ class CalcTab(QWidget):
         left_lay.addWidget(self.status_note)
         self.table = _table(["Pencere", "Saat", "Yükün geldiği saat", "Taşınan enerji (kWh)",
                              "Karbon yoğunluğu", "Emisyon (kg)"])
+        self.table.setFocusPolicy(Qt.StrongFocus)  # klavyeyle ↑ ↓ kaydırma
         h = self.table.horizontalHeader()
         h.setSectionResizeMode(QHeaderView.ResizeToContents)
         h.setSectionResizeMode(0, QHeaderView.Stretch)
@@ -299,7 +301,7 @@ class HistoryTab(QWidget):
         title.setObjectName("cardTitle")
         bar.addWidget(title)
         bar.addSpacing(10)
-        bar.addWidget(theme.muted("Satıra çift tıklayarak senaryoyu geri yükleyin."), 1)
+        bar.addWidget(theme.muted("↑ ↓ seç · Enter geri yükle · Delete sil (çift tıklama da olur)"), 1)
         self.summarize_button = QPushButton("Özetle")
         self.summarize_button.setObjectName("primary")
         self.summarize_button.clicked.connect(self.summarize_requested.emit)
@@ -321,6 +323,7 @@ class HistoryTab(QWidget):
         h.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.table.cellDoubleClicked.connect(self._restore_row)
         self.table.itemSelectionChanged.connect(self._update_buttons)
+        self.table.installEventFilter(self)
         self.stack.addWidget(self.table)
         empty = QLabel("Henüz kayıt yok.\nSenaryo sekmesinde “Senaryoyu kaydet” ile ekleyebilirsiniz.")
         empty.setAlignment(Qt.AlignCenter)
@@ -364,7 +367,24 @@ class HistoryTab(QWidget):
                 if col == 9 and h["delta_pct"] is not None:
                     it.setForeground(QColor(theme.GOOD if h["delta_pct"] <= 0 else theme.BAD))
                 self.table.setItem(n, col, it)
+        self.refresh_selection()
         self._update_buttons()
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj is self.table and event.type() == QEvent.KeyPress:
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                items = self.table.selectedItems()
+                if items:
+                    self._restore_row(items[0].row(), 0)
+                return True
+            if event.key() == Qt.Key_Delete:
+                self._delete_selected()
+                return True
+        return super().eventFilter(obj, event)
+
+    def refresh_selection(self) -> None:
+        if self.table.rowCount() and not self.table.selectedItems():
+            self.table.selectRow(0)
 
     def _update_buttons(self) -> None:
         self.delete_button.setEnabled(self._selected_id() is not None)
@@ -383,9 +403,14 @@ class HistoryTab(QWidget):
         if row_id is None:
             return
         if confirm:
-            ans = QMessageBox.question(self, "Kaydı sil", "Seçili kayıt geçmişten silinsin mi?",
-                                       QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if ans != QMessageBox.Yes:
+            box = QMessageBox(QMessageBox.Question, "Kaydı sil", "Seçili kayıt geçmişten silinsin mi?",
+                              parent=self)
+            delete = box.addButton("Sil", QMessageBox.DestructiveRole)
+            cancel = box.addButton("Vazgeç", QMessageBox.RejectRole)
+            box.setDefaultButton(cancel)  # Enter → Vazgeç; Tab ile Sil seçilir, Esc kapatır
+            box.setEscapeButton(cancel)
+            box.exec()
+            if box.clickedButton() is not delete:
                 return
         self.db.delete(row_id)
         self.refresh()
