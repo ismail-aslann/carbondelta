@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
 
 from desktop import fmt
 from desktop.chart_widget import ChartWidget
+from desktop.history_db import HistoryDB
+from desktop.tabs import CalcTab, HistoryTab, SourcesTab
 from engine import data
 from engine.best_window import best_window
 from engine.core import Result, simulate
@@ -107,8 +109,9 @@ def template_text(c: Computation) -> str:
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, db: HistoryDB | None = None):
         super().__init__()
+        self.db = db or HistoryDB()
         self.setWindowTitle(APP_TITLE)
         self.resize(1280, 820)
         self.current: Computation | None = None
@@ -124,6 +127,12 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(10, 10, 10, 6)
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_scenario_tab(), "Senaryo")
+        self.calc_tab = CalcTab()
+        self.tabs.addTab(self.calc_tab, "Hesabı Göster")
+        self.history_tab = HistoryTab(self.db)
+        self.history_tab.restore_requested.connect(self.restore_history)
+        self.tabs.addTab(self.history_tab, "Geçmiş")
+        self.tabs.addTab(SourcesTab(), "Kaynaklar")
         root.addWidget(self.tabs, 1)
 
         self.footer = QLabel(FOOTER_TEXT)
@@ -306,6 +315,9 @@ class MainWindow(QMainWindow):
             grid.addWidget(t, i, 0)
             grid.addWidget(val, i, 1)
             self.detail_labels[key] = val
+        self.save_button = QPushButton("Kaydet")
+        self.save_button.clicked.connect(self.save_current)
+        grid.addWidget(self.save_button, len(rows), 1)
         lay.addLayout(grid)
         return card
 
@@ -442,7 +454,32 @@ class MainWindow(QMainWindow):
         self.chart.update_chart(ci, load, i.s, i.L, i.t, set(i.restricted), r.status,
                                 r.delta_pct, CI_LABELS[i.ci_kind])
         self._update_card(self.current)
+        self.calc_tab.update_computation(self.current)
         self.ai_text.setPlainText(template_text(self.current))
+
+    def save_current(self) -> int | None:
+        if self.current is None:
+            return None
+        i, r = self.current.inputs, self.current.result
+        row_id = self.db.add(
+            asset_id=i.asset_id, date=i.date, s=i.s, L=i.L, t=i.t, p=i.p,
+            restricted=i.restricted, mode=i.mode, ci_kind=i.ci_kind, status=r.status,
+            delta_pct=r.delta_pct, daily_delta_pct=r.daily_delta_pct,
+            baseline_kg=r.baseline_kg, scenario_kg=r.scenario_kg,
+            param_kwh=i.param_kwh if i.parametric else None,
+        )
+        self.history_tab.refresh()
+        self.statusBar().showMessage("Senaryo geçmişe kaydedildi.", 3000)
+        return row_id
+
+    def restore_history(self, h: dict) -> None:
+        self.set_inputs(ScenarioInputs(
+            asset_id=h["asset_id"], date=h["date"], s=h["s"], L=h["L"], t=h["t"], p=h["p"],
+            restricted=h["restricted"], ci_kind=h["ci_kind"],
+            parametric=h["mode"] == "parametric",
+            param_kwh=h["param_kwh"] if h["param_kwh"] is not None else 50.0,
+        ))
+        self.tabs.setCurrentIndex(0)
 
     def _update_card(self, c: Computation) -> None:
         r = c.result
