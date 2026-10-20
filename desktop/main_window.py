@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QToolButton, QVBoxLayout, QWidget,
 )
 
-from desktop import ai_context, fmt, theme
+from desktop import ai_context, delti, fmt, theme
 from desktop.ai_client import AIReply, AIRequest, AIService, parse_json_reply, prompts
 from desktop.chart_widget import ChartWidget
 from desktop.history_db import HistoryDB
@@ -132,8 +132,8 @@ def result_explanation(c: "Computation") -> str:
 # Açıklama kartındaki kaynak etiketi: (metin, yazı rengi, zemin)
 SOURCE_CHIPS = {
     "ai": ("AI", theme.PRIMARY, theme.PRIMARY_SOFT),
-    "pending": ("AI hazırlanıyor…", theme.MUTED, "#eef1f4"),
-    "fallback_offline": ("Şablon · çevrimdışı", theme.MUTED, "#eef1f4"),
+    "pending": ("Düşünüyor…", theme.MUTED, "#eef1f4"),
+    "fallback_offline": ("Çevrimdışı · şablon", theme.MUTED, "#eef1f4"),
     "fallback_invalid": ("Şablon · doğrulanamadı", theme.WARN, theme.WARN_SOFT),
     "local": ("Uygulama", theme.MUTED, "#eef1f4"),
 }
@@ -193,7 +193,7 @@ class MainWindow(QMainWindow):
         self.nl_tab = NLTab()
         self.nl_tab.submit.connect(self.submit_nl_page)
         self.nl_tab.open_requested.connect(self.open_nl_result)
-        self.tabs.addTab(self.nl_tab, "Doğal Dil")
+        self.tabs.addTab(self.nl_tab, "Delti'ye Sor")
         self.calc_tab = CalcTab()
         self.tabs.addTab(self.calc_tab, "Hesabı Göster")
         self.history_tab = HistoryTab(self.db)
@@ -264,10 +264,10 @@ class MainWindow(QMainWindow):
         self.nl_edit = QLineEdit()
         self.nl_edit.setObjectName("nlEdit")
         self.nl_edit.setMinimumWidth(420)
-        self.nl_edit.setPlaceholderText("Doğal dille yazın: Kompresörü 3'ten 18'e al · Presi %50 oranla 2 saat 21'e kaydır")
+        self.nl_edit.setPlaceholderText("Delti'ye yazın: Kompresörü 3'ten 18'e al · Presi %50 ile 21'e kaydır")
         self.nl_edit.returnPressed.connect(self.submit_nl)
         row.addWidget(self.nl_edit, 1)
-        self.nl_button = QPushButton("Uygula")
+        self.nl_button = QPushButton("Sor")
         self.nl_button.setObjectName("nlButton")
         self.nl_button.clicked.connect(self.submit_nl)
         row.addWidget(self.nl_button)
@@ -493,7 +493,13 @@ class MainWindow(QMainWindow):
         card, lay = theme.card(spacing=6)
 
         head = QHBoxLayout()
-        title = QLabel("Açıklama")
+        head.setSpacing(8)
+        self.delti_avatar = QLabel()
+        self.delti_avatar.setFixedSize(34, 34)
+        self.delti_avatar.setPixmap(delti.pixmap("ready", 34, self.devicePixelRatioF() or 1.0))
+        self.delti_avatar.setToolTip("Delti, CarbonDelta'nın AI yardımcısı. Hesap yapmaz; sonuçları açıklar.")
+        head.addWidget(self.delti_avatar)
+        title = QLabel("Delti açıklıyor")
         title.setObjectName("cardTitle")
         head.addWidget(title)
         self.ai_chip = QLabel("")
@@ -817,9 +823,9 @@ class MainWindow(QMainWindow):
             except Exception:
                 ai_obj = None
         if ai_obj is None:
-            obj, via = dict(rule), "kural çözümleyici (AI çevrimdışı)"
+            obj, via = dict(rule), "kural çözümleyici (Delti çevrimdışı)"
         else:
-            obj, via = {**ai_obj, **rule}, "AI"
+            obj, via = {**ai_obj, **rule}, "Delti (AI)"
         if not any(k in obj for k in ("asset_id", "s", "L", "t", "p")):
             return None, "Cümleden senaryo bilgisi çıkarılamadı.", via
         obj.setdefault("p", 1.0)
@@ -867,6 +873,8 @@ class MainWindow(QMainWindow):
             if key in sources:
                 self.ai_chip.setText(SOURCE_CHIPS[key][0])
                 self.ai_chip.setStyleSheet(chip_style(key))
+                self.delti_avatar.setPixmap(delti.pixmap(delti.STATE_FOR_SOURCE[key], 34,
+                                                         self.devicePixelRatioF() or 1.0))
                 break
         notes = []
         if "fallback_offline" in sources:

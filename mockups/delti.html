@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delti Maskot</title>
+<style>
+  :root {
+    --mint: #5fe0b0; --mint-soft: rgba(95,224,176,.14);
+    --primary: #16785c; --primary-dark: #0f5b46; --primary-soft: #e7f3ef;
+    --text: #1d2733; --muted: #6b7785; --border: #e1e6ec; --bg: #f3f5f8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 18px 28px 6px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+  .grid { display: grid; grid-template-columns: 300px 1fr 1fr; gap: 18px; padding: 14px 28px 24px; }
+  .label { font-size: 11.5px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--muted);
+    margin: 0 0 8px 2px; }
+
+  /* 1) Maskot kartı */
+  .hero { background: radial-gradient(420px 300px at 50% 0%, #0d4a3d, #062720); border-radius: 16px;
+    color: #f2fbf7; padding: 22px 18px; text-align: center; height: 100%; }
+  .hero .big { width: 150px; height: 150px; margin: 6px auto 10px; filter: drop-shadow(0 10px 26px rgba(95,224,176,.35)); }
+  .hero h2 { margin: 0; font-size: 30px; letter-spacing: -.5px; }
+  .hero h2 span { color: var(--mint); }
+  .hero p { color: #9fc4b7; font-size: 13px; margin: 6px 0 14px; line-height: 1.45; }
+  .faces { display: flex; justify-content: center; gap: 14px; margin-top: 6px; }
+  .faces figure { margin: 0; font-size: 11px; color: #9fc4b7; }
+  .faces svg { width: 46px; height: 46px; display: block; margin: 0 auto 4px; }
+  .rule { margin-top: 14px; font-size: 11.5px; color: #9fc4b7; border-top: 1px solid rgba(255,255,255,.1); padding-top: 10px; }
+
+  /* 2) Başlangıç ekranı satırı + açıklama kartı */
+  .col { display: flex; flex-direction: column; gap: 18px; }
+  .dark { background: radial-gradient(500px 260px at 50% 0%, #0d4a3d, #062720); border-radius: 16px; padding: 18px; }
+  .list { width: 360px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,.1);
+    background: rgba(4,30,24,.62); }
+  .row { display: flex; align-items: center; gap: 12px; padding: 9px 14px; color: #f2fbf7;
+    border-top: 1px solid rgba(255,255,255,.09); border-left: 3px solid transparent; }
+  .row:first-child { border-top: none; }
+  .row.sel { background: rgba(255,255,255,.08); border-left-color: var(--mint); }
+  .row .ico { width: 32px; height: 32px; border-radius: 9px; background: var(--mint-soft); display: grid; place-items: center; }
+  .row b { display: block; font-size: 14px; } .row small { color: #9fc4b7; font-size: 12px; }
+  .row.dim { opacity: .45; }
+
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .avatar { width: 34px; height: 34px; flex: none; }
+  .card-head b { font-size: 14.5px; }
+  .chip { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 9px; }
+  .chip.ai { color: var(--primary); background: var(--primary-soft); }
+  .chip.off { color: var(--muted); background: #eef1f4; }
+  .card p { margin: 0; font-size: 13.5px; line-height: 1.6; }
+  .card .note { color: var(--muted); font-size: 12px; font-style: italic; margin-bottom: 6px; }
+  .actions { display: flex; gap: 6px; margin-top: 12px; }
+  .btn { border: 1px solid #cfd6de; background: #fff; border-radius: 6px; padding: 6px 12px; font-size: 13px; }
+
+  /* 3) Delti'ye sor sekmesi */
+  .ask { text-align: left; }
+  .ask .top { display: flex; align-items: center; gap: 12px; }
+  .ask .top .avatar { width: 52px; height: 52px; }
+  .ask h3 { margin: 0; font-size: 18px; }
+  .ask .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .bubble { position: relative; margin: 14px 0 12px 64px; background: var(--primary-soft); border: 1px solid #cfe5dc;
+    border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--primary-dark); }
+  .bubble::before { content: ""; position: absolute; left: -8px; top: 14px; width: 14px; height: 14px; background: var(--primary-soft);
+    border-left: 1px solid #cfe5dc; border-bottom: 1px solid #cfe5dc; transform: rotate(45deg); }
+  .input { display: flex; gap: 8px; }
+  .input div { flex: 1; border: 1px solid var(--primary); border-radius: 8px; padding: 9px 12px; font-size: 14px; color: #8a96a3; }
+  .primary { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 9px 16px; font-weight: 600; font-size: 13.5px; }
+  .examples { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted); align-items: center; }
+  .examples span.ex { background: var(--primary-soft); color: var(--primary-dark); border: 1px solid #cfe5dc; border-radius: 12px; padding: 3px 10px; }
+  .result { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; display: flex; gap: 12px; align-items: flex-start; }
+  .result .avatar { width: 30px; height: 30px; }
+  .result p { margin: 0; font-size: 13.5px; line-height: 1.55; }
+  .result b.delta { color: #1f9254; }
+</style>
+</head>
+<body>
+
+<!-- Maskot: delta üçgeni gövde, iki göz, gülümseme, tepede yaprak -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7cf0c4"/><stop offset="1" stop-color="#2fb487"/>
+    </linearGradient>
+    <symbol id="delti" viewBox="0 0 100 100">
+      <path d="M53 6 C60 2 70 3 74 9 C66 9 60 12 56 18 Z" fill="#2fb487"/>
+      <path d="M53 18 C53 12 53 8 53 6" stroke="#1e8f69" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M50 16 C53 16 55 17.5 56.8 20.6 L91 81 C93.6 85.6 90.6 91 85.4 91 H14.6 C9.4 91 6.4 85.6 9 81 L43.2 20.6 C45 17.5 47 16 50 16 Z"
+            fill="url(#body)"/>
+      <path d="M50 16 C53 16 55 17.5 56.8 20.6 L91 81 C93.6 85.6 90.6 91 85.4 91 H14.6 C9.4 91 6.4 85.6 9 81 L43.2 20.6 C45 17.5 47 16 50 16 Z"
+            fill="none" stroke="#0f5b46" stroke-opacity=".25" stroke-width="2"/>
+      <ellipse cx="40" cy="60" rx="5.2" ry="6.4" fill="#0b3d33"/>
+      <ellipse cx="60" cy="60" rx="5.2" ry="6.4" fill="#0b3d33"/>
+      <circle cx="41.6" cy="57.8" r="1.7" fill="#fff"/><circle cx="61.6" cy="57.8" r="1.7" fill="#fff"/>
+      <path d="M42 72 Q50 79 58 72" stroke="#0b3d33" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+      <ellipse cx="31" cy="72" rx="4.5" ry="2.6" fill="#ff9a8a" opacity=".55"/>
+      <ellipse cx="69" cy="72" rx="4.5" ry="2.6" fill="#ff9a8a" opacity=".55"/>
+    </symbol>
+    <!-- Düşünürken (AI hazırlanıyor) -->
+    <symbol id="delti-think" viewBox="0 0 100 100">
+      <use href="#delti"/>
+      <rect x="32" y="66" width="36" height="12" fill="url(#body)"/>
+      <path d="M44 74 H56" stroke="#0b3d33" stroke-width="3.4" stroke-linecap="round"/>
+    </symbol>
+    <!-- Çevrimdışı (uyuyor) -->
+    <symbol id="delti-sleep" viewBox="0 0 100 100">
+      <use href="#delti"/>
+      <rect x="32" y="52" width="36" height="16" fill="url(#body)"/>
+      <path d="M35 61 Q40 64 45 61 M55 61 Q60 64 65 61" stroke="#0b3d33" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <text x="74" y="40" font-size="14" font-weight="700" fill="#9fc4b7" font-family="Segoe UI">z</text>
+      <text x="82" y="30" font-size="10" font-weight="700" fill="#9fc4b7" font-family="Segoe UI">z</text>
+    </symbol>
+  </defs>
+</svg>
+
+<header>
+  <h1>Delti — CarbonDelta'nın AI yardımcısı</h1>
+  <p>Logodaki delta üçgeninden türetildi. Hesap yapmaz; motorun hesapladığı sonuçları açıklar ve cümlelerinizi senaryoya çevirir.</p>
+</header>
+
+<div class="grid">
+  <!-- 1) Maskot -->
+  <div>
+    <div class="label">Maskot</div>
+    <div class="hero">
+      <svg class="big"><use href="#delti"/></svg>
+      <h2><span>Delti</span></h2>
+      <p>“Merhaba! Yükünüzü hangi saate kaydırırsanız şebeke emisyonunun nasıl değiştiğini size açıklarım.”</p>
+      <div class="faces">
+        <figure><svg><use href="#delti"/></svg>Hazır</figure>
+        <figure><svg><use href="#delti-think"/></svg>Düşünüyor</figure>
+        <figure><svg><use href="#delti-sleep"/></svg>Çevrimdışı</figure>
+      </div>
+      <div class="rule">Yanında her zaman küçük bir <b>AI</b> etiketi durur; karar her zaman kullanıcıdadır.</div>
+    </div>
+  </div>
+
+  <!-- 2) Başlangıç ekranı + açıklama kartı -->
+  <div class="col">
+    <div>
+      <div class="label">Başlangıç ekranı</div>
+      <div class="dark">
+        <div class="list">
+          <div class="row dim"><span class="ico"></span><span><b>En temiz saat</b><small>Otomatik öneri</small></span></div>
+          <div class="row sel">
+            <span class="ico" style="background:none"><svg width="32" height="32"><use href="#delti"/></svg></span>
+            <span><b>Delti'ye sor</b><small>Yazarak senaryo kur</small></span>
+          </div>
+          <div class="row dim"><span class="ico"></span><span><b>Geçmiş</b><small>Kayıtlı senaryolar</small></span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Senaryo · açıklama kartı</div>
+      <div class="card">
+        <div class="card-head">
+          <svg class="avatar"><use href="#delti"/></svg>
+          <b>Delti açıklıyor</b>
+          <span class="chip ai">AI</span>
+        </div>
+        <p>Kompresörün 92,10 kWh'lik yükü 03:00–06:00 yerine 18:00–21:00 aralığına alınırsa bu enerjinin emisyonu
+        42,61 kgCO2 yerine 35,96 kgCO2 olur (−15,62 %). Akşam saatlerinde yenilenebilir payı daha yüksek ve ithal kömür
+        yerine doğal gaz baskın olduğu için her kWh daha az CO2 üretir.</p>
+        <div class="actions"><span class="btn">Neden bu saat?</span><span class="btn">Karşılaştır</span><span class="btn">Daha fazla ▾</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">İnternet yokken</div>
+      <div class="card">
+        <div class="card-head">
+          <svg class="avatar"><use href="#delti-sleep"/></svg>
+          <b>Delti açıklıyor</b>
+          <span class="chip off">Çevrimdışı</span>
+        </div>
+        <p class="note">Delti şu an çevrimdışı; hesap sonucu geçerlidir. Aşağıdaki metin şablondur.</p>
+        <p>Kompresör yükünün %100 kadarı 03:00–06:00 yerine 18:00–21:00 aralığına alınırsa bu enerjinin emisyonu 42,61 kgCO2 yerine 35,96 kgCO2 olur (−15,62 %).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3) Delti'ye sor sekmesi -->
+  <div>
+    <div class="label">“Delti'ye sor” sekmesi</div>
+    <div class="card ask">
+      <div class="top">
+        <svg class="avatar"><use href="#delti"/></svg>
+        <div><h3>Delti'ye sor</h3><div class="sub">Ne yapmak istediğinizi günlük dille yazın.</div></div>
+      </div>
+      <div class="bubble">Hangi makineyi hangi saatten hangi saate almak istersiniz? İsterseniz kaydırma oranını da söyleyin.</div>
+      <div class="input"><div>Örn. Kompresörü 3'ten 18'e al</div><button class="primary">Sor</button></div>
+      <div class="examples">Örnekler: <span class="ex">Kompresörü 3'ten 18'e al</span><span class="ex">Presi %50 ile 21'e kaydır</span></div>
+      <div class="result">
+        <svg class="avatar"><use href="#delti"/></svg>
+        <p><b>Anladım:</b> Kompresör · 03:00–06:00 → 18:00–21:00 · %100.<br>
+        Senaryo sekmesine uyguladım; emisyon <b class="delta">−15,62 %</b> değişiyor.</p>
+      </div>
+      <div class="actions"><span class="btn">Temizle</span><button class="primary">Senaryoya git</button></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

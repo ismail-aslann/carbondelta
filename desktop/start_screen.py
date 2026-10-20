@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QVBoxLayout, QWidget,
 )
 
-from desktop import fmt
+from desktop import delti, fmt
 from desktop.resources import resource_path
 
 BG_CENTER = "#0d4a3d"
@@ -37,7 +37,7 @@ _SVG = {
 ITEMS = [
     ("new", "Yeni senaryo", "Yük kaydırmayı hesapla", "chart"),
     ("best", "En temiz saat", "Otomatik öneri", "search"),
-    ("nl", "Doğal dille sor", "Yazarak senaryo kur", "chat"),
+    ("nl", "Delti'ye sor", "Yazarak senaryo kur", "delti"),
     ("history", "Geçmiş", "Kayıtlı senaryolar", "clock"),
     ("calc", "Hesap dökümü", "Formül ve tablolar", "doc"),
     ("sources", "Kaynaklar", "EPİAŞ · ETKB · Zenodo", "db"),
@@ -195,7 +195,11 @@ class StartScreen(QWidget):
             ico.setObjectName("rowIcon")
             ico.setFixedSize(32, 32)
             ico.setAlignment(Qt.AlignCenter)
-            ico.setPixmap(svg_pixmap(icon_name, 18, MINT, dpr))
+            if icon_name == "delti":
+                ico.setStyleSheet("background: transparent;")
+                ico.setPixmap(delti.pixmap("ready", 32, dpr))
+            else:
+                ico.setPixmap(svg_pixmap(icon_name, 18, MINT, dpr))
             hl.addWidget(ico)
             tv = QVBoxLayout()
             tv.setSpacing(0)
@@ -246,7 +250,7 @@ class StartScreen(QWidget):
 
     def set_status(self, ai_online: bool, machine_count: int) -> None:
         dot = MINT if ai_online else "#8aa39a"
-        ai = "AI açık" if ai_online else "AI kapalı"
+        ai = "Delti (AI) çevrimiçi" if ai_online else "Delti (AI) çevrimdışı"
         self.status.setText(f"<span style='color:{dot}'>●</span> {ai}   ·   {machine_count} makine   ·   "
                             "İnternetsiz hesap")
 

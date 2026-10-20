@@ -97,6 +97,10 @@ yeterlidir; uygulama açıksa önce kapatın.
 
 ## AI ayarı (.env)
 
+Uygulamadaki AI yardımcısının adı **Delti**'dir (maskot: logodaki delta üçgeninden türetildi,
+`desktop/delti.py`). Delti hesap yapmaz; motorun sonuçlarını açıklar ve "Delti'ye Sor" sekmesinde
+cümleleri senaryoya çevirir. Yanında her zaman "AI" etiketi durur; karar kullanıcıdadır.
+
 `.env.example` dosyasını `.env` olarak kopyalayın:
 
 ```

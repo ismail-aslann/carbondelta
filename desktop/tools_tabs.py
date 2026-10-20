@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (  # noqa: E402
     QLineEdit, QPushButton, QSizePolicy, QSlider, QSpinBox, QVBoxLayout, QWidget,
 )
 
-from desktop import fmt, theme  # noqa: E402
+from desktop import delti, fmt, theme  # noqa: E402
 from desktop.tabs import _item, _table  # noqa: E402
 from engine import data  # noqa: E402
 from engine.best_window import scan_windows  # noqa: E402
@@ -293,7 +293,7 @@ EXAMPLES = [
 
 
 class NLTab(QWidget):
-    """Doğal dil girişi: cümle → anlaşılan senaryo (Senaryo sekmesine uygulanır) → önizleme."""
+    """Delti'ye sor: cümle → anlaşılan senaryo (Senaryo sekmesine uygulanır) → önizleme."""
 
     submit = Signal(str)          # cümle (ana pencere AI/kural çözümleyiciye gönderir)
     open_requested = Signal(dict)  # doğrulanmış girdiler
@@ -301,6 +301,7 @@ class NLTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._merged: dict | None = None
+        self._dpr = self.devicePixelRatioF() or 1.0
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 24, 0, 0)
         root.setSpacing(14)
@@ -308,18 +309,40 @@ class NLTab(QWidget):
 
         card, lay = theme.card(margins=(22, 18, 22, 18), spacing=10)
         card.setFixedWidth(720)
-        t = QLabel("Ne yapmak istediğinizi yazın")
-        t.setStyleSheet("font-size: 14pt; font-weight: 700;")
-        lay.addWidget(t)
-        lay.addWidget(theme.muted("Makineyi, saatleri ve isterseniz kaydırma oranını günlük dille yazın. "
-                                  "Uygulama girdileri anlayıp sonucu hesaplar.", wrap=True))
+        top = QHBoxLayout()
+        top.setSpacing(12)
+        self.avatar = QLabel()
+        self.avatar.setFixedSize(56, 56)
+        self.avatar.setPixmap(delti.pixmap("ready", 56, self._dpr))
+        top.addWidget(self.avatar)
+        titles = QVBoxLayout()
+        titles.setSpacing(0)
+        t = QLabel("Delti'ye sor")
+        t.setStyleSheet("font-size: 15pt; font-weight: 700;")
+        titles.addWidget(t)
+        titles.addWidget(theme.muted("Ne yapmak istediğinizi günlük dille yazın."))
+        top.addLayout(titles, 1)
+        ai = QLabel("AI")
+        ai.setStyleSheet(f"color: {theme.PRIMARY}; background: {theme.PRIMARY_SOFT}; border-radius: 9px;"
+                         " padding: 2px 10px; font-size: 8.5pt; font-weight: 600;")
+        ai.setToolTip("Delti bir yapay zekâ yardımcısıdır; hesap yapmaz, karar sizindir.")
+        top.addWidget(ai, 0, Qt.AlignTop)
+        lay.addLayout(top)
+
+        self.bubble = QLabel("Hangi makineyi hangi saatten hangi saate almak istersiniz? "
+                             "İsterseniz kaydırma oranını da söyleyin.")
+        self.bubble.setWordWrap(True)
+        self.bubble.setStyleSheet(f"background: {theme.PRIMARY_SOFT}; border: 1px solid #cfe5dc; border-radius: 12px;"
+                                  f" padding: 9px 12px; color: {theme.PRIMARY_DARK}; margin-left: 66px;")
+        lay.addWidget(self.bubble)
+
         row = QHBoxLayout()
         self.edit = QLineEdit()
         self.edit.setPlaceholderText("Örn. Kompresörü 3'ten 18'e al")
         self.edit.setStyleSheet("font-size: 11pt; padding: 8px 12px;")
         self.edit.returnPressed.connect(self._submit)
         row.addWidget(self.edit, 1)
-        self.go = QPushButton("Çözümle")
+        self.go = QPushButton("Sor")
         self.go.setObjectName("primary")
         self.go.clicked.connect(self._submit)
         row.addWidget(self.go)
@@ -338,47 +361,49 @@ class NLTab(QWidget):
             chips.addWidget(b)
         chips.addStretch(1)
         lay.addLayout(chips)
-        self.status = theme.muted("")
-        lay.addWidget(self.status)
-        root.addWidget(card, 0, Qt.AlignHCenter)
 
-        # Sonuç kartı
-        self.result_card, rl = theme.card(margins=(22, 16, 22, 16), spacing=8)
-        self.result_card.setFixedWidth(720)
-        rt = QLabel("Anlaşılan senaryo")
-        rt.setObjectName("cardTitle")
-        rl.addWidget(rt)
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(24)
-        grid.setVerticalSpacing(4)
-        self.fields: dict[str, QLabel] = {}
-        for n, (key, label) in enumerate([("machine", "Makine"), ("date", "Gün"), ("src", "Standart pencere"),
-                                          ("tgt", "Hedef pencere"), ("p", "Kaydırma oranı")]):
-            grid.addWidget(theme.muted(label), 0, n)
-            v = QLabel("—")
-            v.setStyleSheet("font-weight: 600; font-size: 10.5pt;")
-            grid.addWidget(v, 1, n)
-            self.fields[key] = v
-        rl.addLayout(grid)
-        self.delta = QLabel("")
-        self.delta.setStyleSheet("font-size: 22pt; font-weight: 700;")
-        rl.addWidget(self.delta)
-        self.explain = QLabel("")
-        self.explain.setWordWrap(True)
-        rl.addWidget(self.explain)
+        # Delti'nin cevabı
+        self.answer = QWidget()
+        al = QVBoxLayout(self.answer)
+        al.setContentsMargins(0, 10, 0, 0)
+        al.setSpacing(8)
+        line = QLabel()
+        line.setFixedHeight(1)
+        line.setStyleSheet(f"background: {theme.BORDER};")
+        al.addWidget(line)
+        head = QHBoxLayout()
+        head.setSpacing(12)
+        self.answer_avatar = QLabel()
+        self.answer_avatar.setFixedSize(32, 32)
+        head.addWidget(self.answer_avatar, 0, Qt.AlignTop)
+        self.answer_text = QLabel("")
+        self.answer_text.setWordWrap(True)
+        self.answer_text.setTextFormat(Qt.RichText)
+        self.answer_text.setStyleSheet("font-size: 10.5pt;")
+        head.addWidget(self.answer_text, 1)
+        al.addLayout(head)
+        self.explain = theme.muted("", wrap=True)
+        self.explain.setContentsMargins(44, 0, 0, 0)
+        al.addWidget(self.explain)
         btns = QHBoxLayout()
         self.via = theme.muted("")
         btns.addWidget(self.via, 1)
-        clear = QPushButton("Temizle")
-        clear.clicked.connect(self.clear)
-        btns.addWidget(clear)
+        self.clear_button = QPushButton("Temizle")
+        self.clear_button.clicked.connect(self.clear)
+        btns.addWidget(self.clear_button)
         self.open_button = QPushButton("Senaryoya git")
         self.open_button.setObjectName("primary")
         self.open_button.clicked.connect(lambda: self._merged and self.open_requested.emit(self._merged))
         btns.addWidget(self.open_button)
-        rl.addLayout(btns)
-        self.result_card.hide()
-        root.addWidget(self.result_card, 0, Qt.AlignHCenter)
+        al.addLayout(btns)
+        self.answer.hide()
+        lay.addWidget(self.answer)
+        root.addWidget(card, 0, Qt.AlignHCenter)
+
+    @property
+    def status(self) -> QLabel:
+        """Delti'nin son cevap metni."""
+        return self.answer_text
 
     def focus_input(self) -> None:
         self.edit.setFocus()
@@ -386,23 +411,33 @@ class NLTab(QWidget):
 
     def clear(self) -> None:
         self.edit.clear()
-        self.status.setText("")
-        self.result_card.hide()
+        self.answer.hide()
         self._merged = None
+        self.avatar.setPixmap(delti.pixmap("ready", 56, self._dpr))
         self.focus_input()
+
+    def _show_answer(self, html: str, state: str, explain: str = "", via: str = "",
+                     can_open: bool = False) -> None:
+        self.answer_avatar.setPixmap(delti.pixmap(state, 32, self._dpr))
+        self.answer_text.setText(html)
+        self.explain.setText(explain)
+        self.explain.setVisible(bool(explain))
+        self.via.setText(via)
+        self.open_button.setVisible(can_open)
+        self.answer.show()
 
     def _submit(self) -> None:
         text = self.edit.text().strip()
         if text:
-            self.status.setStyleSheet(f"color: {theme.MUTED};")
-            self.status.setText("Çözümleniyor…")
+            self._merged = None
+            self.avatar.setPixmap(delti.pixmap("think", 56, self._dpr))
+            self._show_answer("Düşünüyorum…", "think")
             self.submit.emit(text)
 
     def show_error(self, msg: str) -> None:
-        self.result_card.hide()
         self._merged = None
-        self.status.setStyleSheet(f"color: {theme.BAD}; font-weight: 600;")
-        self.status.setText(f"Anlaşılamadı: {msg}  Örneklerden birini deneyin.")
+        self.avatar.setPixmap(delti.pixmap("ready", 56, self._dpr))
+        self._show_answer(f"<b>Bunu tam anlayamadım.</b> {msg} Örneklerden birini deneyebilir misiniz?", "ready")
 
     def show_result(self, merged: dict, via: str, explanation_fn) -> None:
         """merged: asset_id, date, s, L, t, p. Önizleme motorla hesaplanır."""
@@ -410,20 +445,14 @@ class NLTab(QWidget):
         m = data.machine(merged["asset_id"])
         load, ci = data.scenario_series(merged["asset_id"], merged["date"])
         r = simulate(load, ci, merged["s"], merged["L"], merged["t"], merged["p"], set(), m["shiftable"])
-        self.fields["machine"].setText(m["name"])
-        self.fields["date"].setText(fmt.date(merged["date"]))
-        self.fields["src"].setText(fmt.window(merged["s"], merged["L"]))
-        self.fields["tgt"].setText(fmt.window(merged["t"], merged["L"]))
-        self.fields["p"].setText(f"%{fmt.num(merged['p'] * 100, 0)}")
+        what = (f"{m['name']} · {fmt.date(merged['date'])} · {fmt.window(merged['s'], merged['L'])} → "
+                f"{fmt.window(merged['t'], merged['L'])} · %{fmt.num(merged['p'] * 100, 0)}")
         if r.status == "ok":
             color = theme.GOOD if r.delta_pct <= 0 else theme.BAD
-            self.delta.setText(fmt.pct(r.delta_pct))
-            self.delta.setStyleSheet(f"font-size: 22pt; font-weight: 700; color: {color};")
+            effect = (f"Senaryo sekmesine uyguladım; emisyon "
+                      f"<b style='color:{color}'>{fmt.pct(r.delta_pct)}</b> değişiyor.")
         else:
-            self.delta.setText("—")
-            self.delta.setStyleSheet(f"font-size: 22pt; font-weight: 700; color: {theme.MUTED};")
-        self.explain.setText(explanation_fn(m, merged, r))
-        self.via.setText(f"Çözümleyen: {via}")
-        self.status.setStyleSheet(f"color: {theme.GOOD}; font-weight: 600;")
-        self.status.setText("✓ Cümle anlaşıldı ve Senaryo sekmesine uygulandı.")
-        self.result_card.show()
+            effect = "Senaryo sekmesine uyguladım; bu girdilerle yüzde hesaplanamıyor."
+        self.avatar.setPixmap(delti.pixmap("ready", 56, self._dpr))
+        self._show_answer(f"<b>Anladım:</b> {what}<br>{effect}", "ready",
+                          explanation_fn(m, merged, r), f"Çözümleyen: {via}", True)
