@@ -8,8 +8,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-APP_NAME = "CarbonDelta"        # pencere başlığı, uygulama adı
-USER_DIR_NAME = "CarbonDelta"   # %APPDATA% altındaki klasör
+APP_NAME = "CarbonDelta Deneme"      # pencere başlığı, uygulama adı
+USER_DIR_NAME = "CarbonDeltaDeneme"   # %APPDATA% altındaki klasör
 
 
 def user_dir() -> Path:

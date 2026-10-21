@@ -45,7 +45,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="CarbonDelta",
+    name="CarbonDeltaDeneme",
     console=False,          # --windowed
     icon=str(ICON) if ICON.exists() else None,
     upx=False,
@@ -55,6 +55,6 @@ coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
-    name="CarbonDelta",
+    name="CarbonDeltaDeneme",
     upx=False,
 )

@@ -11,4 +11,4 @@ if not exist "%ISCC%" (
 )
 "%ISCC%" /Q /DAppVersion=%VER% installer\carbondelta.iss || exit /b 1
 echo.
-echo Kurulum dosyasi hazir: dist_installer\CarbonDelta_Kurulum_%VER%.exe
+echo Kurulum dosyasi hazir: dist_installer\CarbonDeltaDeneme_Kurulum_%VER%.exe
