@@ -31,9 +31,10 @@ standart ve hedef saatleri girin; sonuç kartı anında güncellenir.</p>"""),
 <li><b>Yeni senaryo:</b> Senaryo ekranını temiz bir başlangıçla açar (kısıtlı saatler temizlenir, oran %100).</li>
 <li><b>En temiz saat:</b> Seçtiğiniz yük için günün tüm hedef saatlerini emisyona göre sıralar.</li>
 <li><b>Delti'ye sor:</b> Ne yapmak istediğinizi günlük dille yazarsınız.</li>
-<li><b>Geçmiş</b>, <b>Hesap dökümü</b>, <b>Kullanma kılavuzu</b>, <b>Kaynaklar</b>: ilgili ekranları açar.</li>
+<li><b>Geçmiş</b>, <b>Hesap dökümü</b>, <b>Veri yönetimi</b>, <b>Kullanma kılavuzu</b>, <b>Kaynaklar</b>,
+<b>İletişim</b>: ilgili ekranları açar.</li>
 </ul>
-<p>{_k('↑')} {_k('↓')} ile seçin, {_k('Enter')} ile açın; {_k('1')}…{_k('7')} rakamları satırı doğrudan açar.
+<p>{_k('↑')} {_k('↓')} ile seçin, {_k('Enter')} ile açın; {_k('1')}…{_k('9')} rakamları satırı doğrudan açar.
 Uygulamanın her yerinden {_k('Esc')} ile ana sayfaya dönersiniz.</p>"""),
 
     ("scenario", "Senaryo ekranı", f"""
@@ -119,12 +120,42 @@ değişim = (S − B) / B × 100; günlük etki = (S − B) / günlük toplam em
 <li><b>Özetle:</b> Delti son 10 kaydı özetler; en iyi ve en kötü senaryoyu söyler.</li>
 </ul>"""),
 
+    ("data", "Veri yönetimi", f"""
+<p>Yeni makine, yeni yıl ya da yeni emisyon katsayıları <b>Veri</b> sekmesinden eklenir; uygulamayı yeniden
+kurmak gerekmez. Varsayılan 2025 verisi her zaman yerinde kalır. Eklenen her şey ayrı bir <b>veri paketi</b>
+olarak <i>%APPDATA%\CarbonDelta\veri</i> klasöründe tutulur.</p>
+<ul>
+<li><b>Makine ekle:</b> Saatlik kWh dosyası seçin (CSV ya da Excel; sütunlar <i>Tarih, Saat, kWh</i>; ondalık
+virgül olabilir). Makine adını, türünü, kaydırılabilir olup olmadığını ve veri türünü (<i>örnek yük</i> ya da
+<i>tesis ölçümü</i>) girin. Uygulama her günün 24 tekrarsız saati olup olmadığını, boş/negatif değerleri ve
+o gün için şebeke verisi bulunup bulunmadığını kontrol eder; eksik günleri atlar ve raporlar.
+<i>Şablon dosyayı kaydet</i> ile örnek bir dosya alabilirsiniz.</li>
+<li><b>Yıl ekle:</b> EPİAŞ Şeffaflık Platformu › Üretim › Gerçek Zamanlı Üretim sayfasından istediğiniz dönemi
+dışa aktarıp seçin. Eksik sıfırlı ondalıklar düzeltilir, negatif gece güneş değerleri 0 yapılır, karbon
+yoğunluğu varsayılan veriyle aynı yöntemle hesaplanır. O yılın yükü için ayrıca makine verisi eklenmelidir.</li>
+<li><b>Emisyon katsayıları:</b> ETKB yeni faktörleri yayımladığında yakıt türü başına tCO2/MWh ve
+tCO2-eşd/MWh değerlerini içeren dosyayı seçin. Etkin olduğunda tüm yıllar yeni katsayılarla yeniden
+hesaplanır. Aynı anda tek katsayı paketi etkin olur.</li>
+</ul>
+<p>Paket listesinde {_k('↑')} {_k('↓')} ile seçip {_k('Boşluk')} ile açıp kapatabilir, {_k('Delete')} ile
+silebilirsiniz. Kapatılan paketin makineleri ve günleri listelerden çıkar; silinen paketle kaydedilmiş geçmiş
+senaryolar açılamaz.</p>
+<p><b>Etiket:</b> Tesis ölçümü olarak eklenen bir makine seçildiğinde alt bilgide
+<i>“Tesis ölçümü (Balıkesir)”</i>, örnek veride <i>“Örnek yük, Balıkesir tesisi değil”</i> yazar; kaynakta
+kullanılan şebeke yılı ve katsayı paketi gösterilir.</p>
+<p><b>Formül</b> bu ekrandan değiştirilmez: masaüstü, mobil ve Excel aynı formülü kullanmalıdır. Formül
+değişikliği <i>shared/FORMUL.md</i> sürüm süreciyle geliştiriciler tarafından yapılır.</p>"""),
+
+    ("contact", "İletişim", """
+<p><b>İletişim</b> sekmesinde geliştiricilerin ve danışmanın telefon ve e-posta bilgileri bulunur.
+<i>E-posta gönder</i> varsayılan e-posta uygulamanızı açar, <i>Kopyala</i> bilgileri panoya alır.</p>"""),
+
     ("keys", "Klavye kısayolları", f"""
 <p>Uygulama fare olmadan tamamen klavyeyle kullanılabilir. Odaktaki öğe yeşil çerçeveyle gösterilir.</p>
 <table cellspacing="0" cellpadding="5">
 <tr><td>{_k('Esc')}</td><td>Ana sayfaya dön (açık bir liste/takvim varsa önce onu kapatır)</td></tr>
 <tr><td>{_k('F1')}</td><td>Kullanma kılavuzu</td></tr>
-<tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '7')}</td><td>Senaryo · En Temiz Saat · Delti'ye Sor · Hesabı Göster · Geçmiş · Kılavuz · Kaynaklar</td></tr>
+<tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '9')}</td><td>Senaryo · En Temiz Saat · Delti'ye Sor · Hesabı Göster · Geçmiş · Veri · Kılavuz · Kaynaklar · İletişim</td></tr>
 <tr><td>{_k('Ctrl', 'Tab')} / {_k('Ctrl', 'Shift', 'Tab')}</td><td>Sonraki / önceki sekme</td></tr>
 <tr><td>{_k('Tab')} / {_k('Shift', 'Tab')}</td><td>Alanlar arasında ileri / geri</td></tr>
 <tr><td>{_k('↑')} {_k('↓')}</td><td>Sayı ve saat değerini değiştir, listede seç, kaydırıcıyı oynat</td></tr>
@@ -136,7 +167,7 @@ değişim = (S − B) / B × 100; günlük etki = (S − B) / günlük toplam em
 <tr><td>{_k('Delete')}</td><td>Geçmiş'te seçili kaydı sil</td></tr>
 <tr><td>{_k('PgUp')} / {_k('PgDn')}</td><td>Kılavuz ve uzun metinlerde sayfa kaydır</td></tr>
 </table>
-<p><b>Ana sayfada:</b> {_k('↑')} {_k('↓')} seç, {_k('Enter')} aç, {_k('1')}…{_k('7')} doğrudan aç;
+<p><b>Ana sayfada:</b> {_k('↑')} {_k('↓')} seç, {_k('Enter')} aç, {_k('1')}…{_k('9')} doğrudan aç;
 en üstte {_k('↑')} ile <i>Son senaryo</i> kartına çıkılır.</p>"""),
 
     ("sources", "Veri ve sınırlılıklar", """

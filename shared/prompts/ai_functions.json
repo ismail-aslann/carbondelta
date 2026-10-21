@@ -78,9 +78,9 @@
   {
    "id": "season_note",
    "title": "Mevsim notu",
-   "system": "Aynı saatlerin 2025 aylık ortalama karbon yoğunluklarına bakarak sonucun yıl boyunca geçerli mi yoksa mevsime özgü mü olduğunu açıkla; kaç ayda daha temiz/kirli olduğunu, en iyi ve en kötü ayı söyle.",
+   "system": "Aynı saatlerin seçili yılın aylık ortalama karbon yoğunluklarına bakarak sonucun yıl boyunca geçerli mi yoksa mevsime özgü mü olduğunu açıkla; kaç ayda daha temiz/kirli olduğunu, en iyi ve en kötü ayı söyle.",
    "user_template": "Aylık profil (JSON):\n{payload_json}",
-   "fallback_template": "2025 aylık ortalamalarında {target_window} aralığı, {source_window} aralığından {better_months} ayda daha temiz, {worse_months} ayda daha kirli. En büyük düşüş {best_month} ayında ({best_month_pct}), en kötü ay {worst_month} ({worst_month_pct})."
+   "fallback_template": "{year} aylık ortalamalarında {target_window} aralığı, {source_window} aralığından {better_months} ayda daha temiz, {worse_months} ayda daha kirli. En büyük düşüş {best_month} ayında ({best_month_pct}), en kötü ay {worst_month} ({worst_month_pct})."
   },
   {
    "id": "history_summary",

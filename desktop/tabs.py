@@ -129,7 +129,7 @@ def export_calc_csv(path: Path | str, computation) -> None:
         w.writerow(["Günlük emisyon (kg)", _raw(r.daily_kg)])
         w.writerow(["Günlük etki (%)", _raw(r.daily_delta_pct)])
         w.writerow([])
-        w.writerow(["Örnek yük, Balıkesir tesisi değil · Kaynak: EPİAŞ 2025, ETKB 2023, Zenodo"])
+        w.writerow([data.source_label(i.asset_id, i.date)])
 
 
 def _stat(title: str) -> tuple[QWidget, QLabel]:

@@ -30,6 +30,9 @@ _SVG = {
     "doc": '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>',
     "book": '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5V5.5"/>'
             '<path d="M9 8h7M9 12h5"/>',
+    "dbplus": '<ellipse cx="11" cy="6" rx="7" ry="3"/><path d="M4 6v6c0 1.7 3.1 3 7 3"/>'
+              '<path d="M4 12v6c0 1.7 3.1 3 7 3"/><path d="M18 6v4"/><path d="M19 15v6M16 18h6"/>',
+    "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
     "db": '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/>'
           '<path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
     "play": None,
@@ -42,14 +45,16 @@ ITEMS = [
     ("nl", "Delti'ye sor", "Yazarak senaryo kur", "delti"),
     ("history", "Geçmiş", "Kayıtlı senaryolar", "clock"),
     ("calc", "Hesap dökümü", "Formül ve tablolar", "doc"),
+    ("data", "Veri yönetimi", "Makine · yıl · katsayı ekle", "dbplus"),
     ("guide", "Kullanma kılavuzu", "Her şey adım adım · F1", "book"),
     ("sources", "Kaynaklar", "EPİAŞ · ETKB · Zenodo", "db"),
+    ("contact", "İletişim", "Geliştiriciler ve danışman", "mail"),
 ]
 
 STYLE = f"""
 QWidget#start {{ background: transparent; }}
 QWidget#start QLabel {{ background: transparent; color: {TEXT}; }}
-QWidget#start QLabel#startTitle {{ font-size: 32pt; font-weight: 700; }}
+QWidget#start QLabel#startTitle {{ font-size: 28pt; font-weight: 700; }}
 QWidget#start QLabel#startTagline {{ color: {MUTED}; font-size: 11pt; }}
 QWidget#start QLabel#small {{ color: {MUTED}; font-size: 8pt; letter-spacing: 1px; }}
 QWidget#start QLabel#sub {{ color: {MUTED}; font-size: 9pt; }}
@@ -132,7 +137,7 @@ class StartScreen(QWidget):
         logo = QLabel()
         icon = resource_path("desktop/icon.png")
         if icon.exists():
-            logo.setPixmap(QIcon(str(icon)).pixmap(78, 78))
+            logo.setPixmap(QIcon(str(icon)).pixmap(64, 64))
         logo.setAlignment(Qt.AlignCenter)
         glow = QGraphicsDropShadowEffect(logo)
         glow.setBlurRadius(46)
@@ -140,7 +145,7 @@ class StartScreen(QWidget):
         glow.setColor(QColor(95, 224, 176, 110))
         logo.setGraphicsEffect(glow)
         col.addWidget(logo, 0, Qt.AlignHCenter)
-        col.addSpacing(12)
+        col.addSpacing(8)
 
         title = QLabel(f"Carbon<span style='color:{MINT}'>Delta</span>")
         title.setObjectName("startTitle")
@@ -150,7 +155,7 @@ class StartScreen(QWidget):
         tagline.setObjectName("startTagline")
         tagline.setAlignment(Qt.AlignCenter)
         col.addWidget(tagline, 0, Qt.AlignHCenter)
-        col.addSpacing(18)
+        col.addSpacing(12)
 
         # Son senaryo kartı
         self.resume = _Clickable("resume")
@@ -179,7 +184,7 @@ class StartScreen(QWidget):
         self.resume.clicked.connect(lambda: self.action.emit("resume"))
         self.resume.hovered.connect(lambda: self._select(-1))
         col.addWidget(self.resume, 0, Qt.AlignHCenter)
-        col.addSpacing(10)
+        col.addSpacing(8)
 
         # Bölüm listesi
         lst = QFrame()
@@ -194,7 +199,7 @@ class StartScreen(QWidget):
             row = _Clickable("row")
             row.setProperty("sep", n > 0)
             hl = QHBoxLayout(row)
-            hl.setContentsMargins(12, 9, 14, 9)
+            hl.setContentsMargins(12, 6, 14, 6)
             hl.setSpacing(12)
             ico = QLabel()
             ico.setObjectName("rowIcon")

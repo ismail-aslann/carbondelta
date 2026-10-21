@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Veri Yönetimi</title>
+<style>
+  :root {
+    --bg: #f3f5f8; --surface: #fff; --border: #e1e6ec; --text: #1d2733; --muted: #6b7785;
+    --primary: #16785c; --primary-dark: #0f5b46; --primary-soft: #e7f3ef;
+    --good: #1f9254; --bad: #d03c3c; --warn: #9a6412; --warn-soft: #fff6e5; --bad-soft: #fdecec;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Segoe UI", system-ui, sans-serif; font-size: 13.5px; }
+  .header { background: linear-gradient(90deg, #0f5b46, #16765b); color: #fff; padding: 10px 18px; display: flex; align-items: center; gap: 14px; }
+  .header b { font-size: 19px; } .header small { color: #cfe9df; display: block; font-size: 11.5px; }
+  .home { margin-left: 8px; border: 1px solid rgba(255,255,255,.45); border-radius: 16px; padding: 5px 14px; font-size: 13px; }
+  .tabs { display: flex; gap: 2px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+  .tabs span { padding: 10px 16px; color: var(--muted); }
+  .tabs span.on { color: var(--primary); border-bottom: 3px solid var(--primary); font-weight: 600; }
+  .wrap { display: grid; grid-template-columns: 360px 1fr; gap: 14px; padding: 14px 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  h3 { margin: 0 0 10px; font-size: 14.5px; }
+  .muted { color: var(--muted); }
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; }
+  .c-sample { background: #eef1f4; color: var(--muted); }
+  .c-real { background: var(--primary-soft); color: var(--primary); }
+  .c-builtin { background: #eef1f4; color: #4a5562; }
+
+  /* Paketler */
+  .pkg { border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; }
+  .pkg.sel { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+  .pkg .t { flex: 1; } .pkg b { display: block; font-size: 13.5px; }
+  .pkg .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .switch { width: 34px; height: 18px; border-radius: 9px; background: var(--primary); position: relative; flex: none; margin-top: 2px; }
+  .switch::after { content: ""; position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+  .switch.off { background: #cfd6de; } .switch.off::after { right: auto; left: 2px; }
+  .switch.lock { background: #9cc5b8; }
+
+  .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .act { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: #fff; }
+  .act.on { border: 2px solid var(--primary); background: var(--primary-soft); }
+  .act b { display: block; font-size: 14px; margin-bottom: 3px; }
+  .act small { color: var(--muted); }
+  .act .k { float: right; font-size: 11px; color: var(--muted); border: 1px solid #d6dde4; border-radius: 4px; padding: 0 5px; }
+
+  /* Sihirbaz */
+  .steps { display: flex; gap: 6px; margin-bottom: 14px; }
+  .step { flex: 1; font-size: 12px; padding: 7px 10px; border-radius: 7px; background: #eef1f4; color: var(--muted); }
+  .step.done { background: var(--primary-soft); color: var(--primary-dark); }
+  .step.on { background: var(--primary); color: #fff; font-weight: 600; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { margin-bottom: 9px; } .field label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 3px; }
+  .input { border: 1px solid #cfd6de; border-radius: 6px; padding: 6px 9px; background: #fff; }
+  .radio { display: flex; gap: 14px; } .radio span::before { content: "○ "; } .radio span.on::before { content: "◉ "; color: var(--primary); }
+  .check { list-style: none; padding: 0; margin: 0; }
+  .check li { padding: 5px 0 5px 24px; position: relative; border-bottom: 1px dashed #eef1f4; }
+  .check li::before { position: absolute; left: 0; top: 4px; font-weight: 700; }
+  .check .ok::before { content: "✓"; color: var(--good); }
+  .check .warn::before { content: "!"; color: var(--warn); left: 4px; }
+  .check .err::before { content: "✕"; color: var(--bad); }
+  .bars { display: flex; align-items: flex-end; gap: 3px; height: 70px; padding: 6px 0; border-bottom: 1px solid #cfd6de; }
+  .bars i { flex: 1; background: #a9bfd3; border-radius: 2px 2px 0 0; }
+  .hours { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
+  .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  .btn { border: 1px solid #cfd6de; border-radius: 6px; padding: 6px 14px; background: #fff; }
+  .btn.p { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+  pre { background: #f6f8fa; border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; margin: 6px 0 0; font-size: 12px; }
+  .note { background: var(--warn-soft); border: 1px solid #f0d9a8; border-radius: 9px; padding: 10px 12px; color: #5c3d07; font-size: 12.5px; margin-top: 10px; }
+  .foot { text-align: center; color: var(--muted); font-size: 12px; padding: 6px; }
+  .foot .real { color: var(--primary-dark); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div><b>CarbonDelta</b><small>Emisyon Potansiyeli Karar Destek</small></div>
+  <span class="home">⌂ Ana sayfa</span>
+</div>
+<div class="tabs">
+  <span>Senaryo</span><span>En Temiz Saat</span><span>Delti'ye Sor</span><span>Hesabı Göster</span>
+  <span>Geçmiş</span><span class="on">Veri</span><span>Kılavuz</span><span>Kaynaklar</span>
+</div>
+
+<div class="wrap">
+  <!-- Sol: paketler -->
+  <div>
+    <div class="card">
+      <h3>Yüklü veri paketleri</h3>
+      <div class="pkg">
+        <div class="t"><b>Varsayılan veri (2025)</b>
+          <div class="meta">EPİAŞ 2025 · 8.760 saat · 7 makine · ETKB 2023</div>
+          <div style="margin-top:4px"><span class="chip c-builtin">Yerleşik</span> <span class="chip c-sample">Örnek yük</span></div></div>
+        <div class="switch lock" title="Yerleşik paket kapatılamaz"></div>
+      </div>
+      <div class="pkg sel">
+        <div class="t"><b>Balıkesir ölçümleri</b>
+          <div class="meta">2 makine · 01.01.2026 – 30.09.2026 · eklendi 14.10.2026</div>
+          <div style="margin-top:4px"><span class="chip c-real">Tesis ölçümü</span></div></div>
+        <div class="switch"></div>
+      </div>
+      <div class="pkg">
+        <div class="t"><b>EPİAŞ 2026</b>
+          <div class="meta">Şebeke verisi · 6.552 saat (01.01 – 30.09.2026)</div>
+          <div style="margin-top:4px"><span class="chip c-builtin">Şebeke</span></div></div>
+        <div class="switch"></div>
+      </div>
+      <div class="pkg">
+        <div class="t"><b>Yeni pres hattı (deneme)</b>
+          <div class="meta">1 makine · 2025 günleri</div>
+          <div style="margin-top:4px"><span class="chip c-sample">Örnek yük</span></div></div>
+        <div class="switch off"></div>
+      </div>
+      <div class="muted" style="font-size:12px; margin-top:6px">Paketler <b>%APPDATA%\CarbonDelta\veri\</b> klasöründe tutulur.
+        Kapatılan paket silinmez; seçili pakette <b>Del</b> ile kaldırılır (onay sorulur).</div>
+    </div>
+
+    <div class="note"><b>Formül bu ekrandan değiştirilmez.</b> Hesap formülü masaüstü, mobil ve Excel'de aynı kalmalıdır;
+      değişiklik FORMUL.md sürüm süreciyle yapılır. Emisyon katsayıları ise veri olarak güncellenebilir.</div>
+  </div>
+
+  <!-- Sağ: işlemler + sihirbaz -->
+  <div>
+    <div class="actions">
+      <div class="act on"><span class="k">1</span><b>Makine ekle</b><small>Saatlik kWh dosyası (CSV / Excel)</small></div>
+      <div class="act"><span class="k">2</span><b>Yıl ekle</b><small>EPİAŞ gerçek zamanlı üretim dışa aktarımı</small></div>
+      <div class="act"><span class="k">3</span><b>Emisyon katsayıları</b><small>Yeni ETKB yakıt faktörleri</small></div>
+    </div>
+
+    <div class="card">
+      <div class="steps">
+        <div class="step done">1 · Dosya</div><div class="step done">2 · Bilgiler</div>
+        <div class="step on">3 · Kontrol ve önizleme</div><div class="step">4 · Ekle</div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <h3>Makine bilgileri</h3>
+          <div class="field"><label>Dosya</label><div class="input">kompresor_hat2_2026.csv · 6.552 satır</div></div>
+          <div class="field"><label>Makine adı</label><div class="input">Kompresör (Hat 2)</div></div>
+          <div class="field"><label>Tür</label><div class="input">Basınçlı hava</div></div>
+          <div class="field"><label>Yük kaydırılabilir mi?</label>
+            <div class="radio"><span class="on">Evet</span><span>Hayır (sürekli / kısıtlı süreç)</span></div></div>
+          <div class="field"><label>Veri türü</label>
+            <div class="radio"><span>Örnek yük</span><span class="on">Tesis ölçümü (Balıkesir)</span></div></div>
+          <div class="muted" style="font-size:12px">Beklenen biçim (ayraç ; veya ,):</div>
+          <pre>Tarih;Saat;kWh
+2026-01-01;0;12,40
+2026-01-01;1;11,85
+…</pre>
+          <div class="btns" style="justify-content:flex-start"><span class="btn">Şablon dosyayı kaydet</span></div>
+        </div>
+        <div>
+          <h3>Otomatik kontrol</h3>
+          <ul class="check">
+            <li class="ok">273 gün okundu · 01.01.2026 – 30.09.2026</li>
+            <li class="warn">1 gün eksik saatli (30.03.2026, 23 saat — yaz saati) — <b>atlanacak</b></li>
+            <li class="warn">1 günde 2 saat boş (14.06.2026; satır 3.941, 3.942) — <b>atlanacak</b></li>
+            <li class="ok"><b>271 gün kullanılabilir</b> (her gün 24 saat, tekrarsız)</li>
+            <li class="ok">271 günün tamamı için şebeke verisi var (EPİAŞ 2026)</li>
+            <li class="ok">Negatif değer yok · en büyük saatlik değer 48,20 kWh</li>
+          </ul>
+          <h3 style="margin-top:12px">Önizleme · ortalama günlük profil</h3>
+          <div class="bars">
+            <i style="height:30%"></i><i style="height:28%"></i><i style="height:27%"></i><i style="height:26%"></i><i style="height:28%"></i><i style="height:40%"></i>
+            <i style="height:62%"></i><i style="height:84%"></i><i style="height:92%"></i><i style="height:95%"></i><i style="height:93%"></i><i style="height:90%"></i>
+            <i style="height:70%"></i><i style="height:88%"></i><i style="height:91%"></i><i style="height:89%"></i><i style="height:80%"></i><i style="height:60%"></i>
+            <i style="height:45%"></i><i style="height:40%"></i><i style="height:36%"></i><i style="height:34%"></i><i style="height:32%"></i><i style="height:31%"></i>
+          </div>
+          <div class="hours"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+        </div>
+      </div>
+      <div class="btns"><span class="btn">← Geri</span><span class="btn">Vazgeç</span><span class="btn p">271 günü ekle →</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="foot">Seçili makineye göre alt bilgi: <span class="real">Tesis ölçümü (Balıkesir)</span> · Kaynak: EPİAŞ 2026, ETKB 2023
+  &nbsp;|&nbsp; örnek makinede: Örnek yük, Balıkesir tesisi değil · Kaynak: EPİAŞ 2025, ETKB 2023, Zenodo</div>
+
+</body>
+</html>

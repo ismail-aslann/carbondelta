@@ -175,6 +175,17 @@ class BestWindowTab(QWidget):
         body.addWidget(ccard, 2)
         root.addLayout(body, 1)
 
+    def reload_machines(self) -> None:
+        current = self.machine.currentData()
+        self._loading = True
+        self.machine.clear()
+        for m in data.machines():
+            if m["shiftable"]:
+                self.machine.addItem(m["name"], m["id"])
+        idx = self.machine.findData(current)
+        self.machine.setCurrentIndex(idx if idx >= 0 else 0)
+        self._loading = False
+
     # ---------------------------------------------------------- girdiler
     def load_inputs(self, asset_id: str, date: str, s: int, L: int, p: float, restricted: list[int]) -> None:
         """Senaryo sekmesindeki değerlerle başlar (kaydırılamaz makinede ilk uygun makine)."""

@@ -43,13 +43,15 @@ def compare(delta_a: float | None, delta_b: float | None) -> dict:
 
 
 def season_profile(source_hours: list[int], target_hours: list[int],
-                   kind: str = "tCO2") -> dict:
-    """Aynı saatlerin 2025 aylık ortalama karbon yoğunluğu (yükten bağımsız).
+                   kind: str = "tCO2", year: int | None = None) -> dict:
+    """Aynı saatlerin aylık ortalama karbon yoğunluğu (yükten bağımsız); year verilirse o yıl.
 
     Her ay için standart ve seçilen pencerenin ortalama CI'si ve yüzde farkı.
     """
     by_month: dict[str, list[tuple[float, float]]] = {}
     for date in data.all_dates():
+        if year is not None and not date.startswith(f"{year}-"):
+            continue
         ci = data.ci_24(date, kind)
         src = sum(ci[h] for h in source_hours) / len(source_hours)
         tgt = sum(ci[h] for h in target_hours) / len(target_hours)

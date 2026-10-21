@@ -10,7 +10,7 @@ from PySide6.QtCore import QDate, QSize, Qt, QTimer
 from PySide6.QtGui import QBrush, QColor, QIcon, QKeySequence, QShortcut, QTextCharFormat, QValidator
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QComboBox, QDateEdit, QDoubleSpinBox, QFormLayout,
-    QFrame, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMenu,
+    QFrame, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
     QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider, QSpinBox, QStackedWidget,
     QTabWidget,
     QTextBrowser,
@@ -25,6 +25,8 @@ from desktop.resources import resource_path
 from desktop.start_screen import StartScreen
 from desktop.tools_tabs import BestWindowTab, NLTab
 from desktop.guide_tab import GuideTab
+from desktop.data_tab import DataTab
+from desktop.contact_tab import ContactTab
 from desktop.keyboard import DateEdit, KeyboardHelper
 from desktop.tabs import CalcTab, HistoryTab, SourcesTab
 from engine import data
@@ -202,10 +204,15 @@ class MainWindow(QMainWindow):
         self.history_tab.restore_requested.connect(self.restore_history)
         self.history_tab.summarize_requested.connect(self.summarize_history)
         self.tabs.addTab(self.history_tab, "Geçmiş")
+        self.data_tab = DataTab()
+        self.data_tab.data_changed.connect(lambda msg: QTimer.singleShot(0, lambda: self._apply_data_change(msg)))
+        self.tabs.addTab(self.data_tab, "Veri")
         self.guide_tab = GuideTab()
         self.tabs.addTab(self.guide_tab, "Kılavuz")
         self.sources_tab = SourcesTab()
         self.tabs.addTab(self.sources_tab, "Kaynaklar")
+        self.contact_tab = ContactTab()
+        self.tabs.addTab(self.contact_tab, "İletişim")
         self.tabs.currentChanged.connect(self._on_tab_changed)
         body.addWidget(self.tabs, 1)
 
@@ -673,6 +680,10 @@ class MainWindow(QMainWindow):
 
         self.chart.update_chart(ci, load, i.s, i.L, i.t, set(i.restricted), r.status,
                                 r.delta_pct, CI_LABELS[i.ci_kind])
+        self.footer.setText(data.source_label(i.asset_id, i.date))
+        real = data.is_real(i.asset_id)
+        self.footer.setStyleSheet(f"color: {theme.PRIMARY_DARK if real else MUTED}; padding: 3px; font-size: 8.5pt;"
+                                  + (" font-weight: 600;" if real else ""))
         self._update_card(self.current)
         self.calc_tab.update_computation(self.current)
         if auto_ai:
@@ -695,6 +706,8 @@ class MainWindow(QMainWindow):
         return row_id
 
     def restore_history(self, h: dict) -> None:
+        if self._missing_machine(h["asset_id"]):
+            return
         self.set_inputs(ScenarioInputs(
             asset_id=h["asset_id"], date=h["date"], s=h["s"], L=h["L"], t=h["t"], p=h["p"],
             restricted=h["restricted"], ci_kind=h["ci_kind"],
@@ -750,7 +763,7 @@ class MainWindow(QMainWindow):
         self.start.set_curve(data.ci_24(DEMO_DATE))
         self.start.set_status(self.ai.online, len(data.machines()))
         latest = self.db.latest()
-        if latest is not None and latest["delta_pct"] is not None:
+        if latest is not None and latest["delta_pct"] is not None and data.has_machine(latest["asset_id"]):
             name = data.machine(latest["asset_id"])["name"]
             self.start.set_resume("Son senaryo", f"{name} · {fmt.hour(latest['s'])} → {fmt.hour(latest['t'])}",
                                   fmt.pct(latest["delta_pct"]), latest["delta_pct"] <= 0)
@@ -762,6 +775,38 @@ class MainWindow(QMainWindow):
         name = data.machine(demo.asset_id)["name"]
         self.start.set_resume("Demo senaryo", f"{name} · {fmt.hour(demo.s)} → {fmt.hour(demo.t)}",
                               fmt.pct(r.delta_pct), (r.delta_pct or 0) <= 0)
+
+    def _apply_data_change(self, message: str) -> None:
+        """Veri paketi eklendi/açıldı/kapandı/silindi: her şeyi yeniden oku ve tazele."""
+        data.reload()
+        self.data_tab.refresh()
+        self.reload_machines()
+        self.best_tab.reload_machines()
+        self.calc_tab._fill_etkb()
+        self.history_tab.refresh()
+        self.refresh_start()
+        self.data_tab.show_message(message)
+
+    def reload_machines(self) -> None:
+        current = self.machine_combo.currentData()
+        self._loading = True
+        self.machine_combo.blockSignals(True)  # boşaltırken "makine değişti" tetiklenmesin
+        self.machine_combo.clear()
+        for m in data.machines():
+            self.machine_combo.addItem(machine_label(m), m["id"])
+        idx = self.machine_combo.findData(current)
+        self.machine_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.machine_combo.blockSignals(False)
+        self._loading = False
+        self._on_machine_changed()
+
+    def _missing_machine(self, asset_id: str) -> bool:
+        if data.has_machine(asset_id):
+            return False
+        QMessageBox.information(self, "Senaryo açılamadı",
+                                "Bu kaydın makinesi artık yüklü değil (veri paketi kapatılmış ya da silinmiş). "
+                                "Veri sekmesinden paketi yeniden açabilirsiniz.")
+        return True
 
     @staticmethod
     def _demo_inputs() -> ScenarioInputs:
@@ -781,7 +826,7 @@ class MainWindow(QMainWindow):
     def _on_start_action(self, key: str) -> None:
         if key == "resume":
             latest = self.db.latest()
-            if latest is not None and latest["delta_pct"] is not None:
+            if latest is not None and latest["delta_pct"] is not None and data.has_machine(latest["asset_id"]):
                 self.restore_history(latest)
             else:
                 self.set_inputs(self._demo_inputs())
@@ -800,6 +845,10 @@ class MainWindow(QMainWindow):
             self._open_app(self.calc_tab)
         elif key == "guide":
             self.open_guide()
+        elif key == "data":
+            self._open_app(self.data_tab)
+        elif key == "contact":
+            self._open_app(self.contact_tab)
         elif key == "sources":
             self._open_app(self.sources_tab)
 
@@ -831,6 +880,10 @@ class MainWindow(QMainWindow):
             self.history_tab.table.setFocus(Qt.TabFocusReason)
         elif tab is self.guide_tab:
             self.guide_tab.focus_default()
+        elif tab is self.data_tab:
+            self.data_tab.focus_default()
+        elif tab is self.contact_tab:
+            self.contact_tab.focus_default()
         else:
             tab.setFocus(Qt.TabFocusReason)
 

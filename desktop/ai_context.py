@@ -189,14 +189,17 @@ def season_note(c) -> AIRequest | None:
     i = c.inputs
     if c.result.status not in IN_RANGE_STATUSES or i.s == i.t:
         return None
-    prof = season_profile(list(range(i.s, i.s + i.L)), list(range(i.t, i.t + i.L)), i.ci_kind)
+    year = int(i.date[:4])
+    prof = season_profile(list(range(i.s, i.s + i.L)), list(range(i.t, i.t + i.L)), i.ci_kind, year)
     payload = {
+        "year": year,
         "source_window": fmt.window(i.s, i.L),
         "target_window": fmt.window(i.t, i.L),
         "emission_type": i.ci_kind,
         **prof,
     }
     display = {
+        "year": str(year),
         "source_window": fmt.window(i.s, i.L),
         "target_window": fmt.window(i.t, i.L),
         "better_months": str(prof["better_month_count"]),
@@ -210,7 +213,7 @@ def season_note(c) -> AIRequest | None:
 
 
 def _history_label(h: dict) -> str:
-    name = data.machine(h["asset_id"])["name"]
+    name = data.machine(h["asset_id"])["name"] if data.has_machine(h["asset_id"]) else h["asset_id"]
     return f"{name} {fmt.date(h['date'])} {fmt.window(h['s'], h['L'])} → {fmt.window(h['t'], h['L'])}"
 
 
@@ -218,7 +221,9 @@ def scenario_compare(saved: dict, c) -> AIRequest:
     a_delta, b_delta = saved["delta_pct"], c.result.delta_pct
     cmp = compare(a_delta, b_delta)
     payload = {
-        "a": {"label": _history_label(saved), "machine": data.machine(saved["asset_id"])["name"],
+        "a": {"label": _history_label(saved),
+              "machine": (data.machine(saved["asset_id"])["name"] if data.has_machine(saved["asset_id"])
+                          else saved["asset_id"]),
               "date": fmt.date(saved["date"]),
               "status": saved["status"], "delta_pct": a_delta,
               "daily_delta_pct": saved["daily_delta_pct"]},
@@ -267,7 +272,8 @@ def term_explain(term: str) -> AIRequest:
 
 
 def data_source_explain() -> AIRequest:
-    payload = {"sources": ["EPİAŞ 2025 saatlik üretim", "ETKB 2023 emisyon faktörleri",
+    payload = {"sources": [f"{data.BASE_GRID_LABEL} saatlik üretim (+ eklenen yıllar)",
+                           f"{data.factors_label()} emisyon faktörleri",
                            "Zenodo imalat tesisi makine yükleri"],
                "load_is_sample": True}
     return _req("data_source_explain", payload, {})

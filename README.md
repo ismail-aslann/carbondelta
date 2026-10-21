@@ -88,6 +88,21 @@ build.bat
 üretir. `dist\CarbonDelta` klasörünün tamamı kopyalanarak Python kurulu olmayan bir bilgisayarda
 çalıştırılabilir. İlk açılışta matplotlib font önbelleği oluşturulduğu için açılış birkaç saniye uzun sürer.
 
+## Veri ekleme (yeni makine, yeni yıl, yeni katsayılar)
+
+Uygulamadaki **Veri** sekmesinden (ana sayfada *Veri yönetimi*) eklenir; EXE'yi yeniden üretmek gerekmez.
+Varsayılan 2025 verisi EXE içinde kalır; eklenenler `%APPDATA%\CarbonDelta\veri\<paket>\` altında
+ayrı paketler olarak tutulur (açılıp kapatılabilir, silinebilir). Kod: `engine/packages.py`.
+
+- **Makine:** `Tarih;Saat;kWh` (CSV/Excel). Her gün 24 tekrarsız saat ve o gün için şebeke verisi gerekir;
+  eksik günler atlanır. Veri türü *örnek yük* ya da *tesis ölçümü* seçilir; alt bilgi etiketi buna göre değişir.
+- **Yıl:** EPİAŞ Şeffaflık › Gerçek Zamanlı Üretim dışa aktarımı. Ondalık yazımları düzeltilir, negatif
+  değerler 0 yapılır, karbon yoğunluğu varsayılan veriyle aynı yöntemle (kaynak üretimi × katsayı) hesaplanır.
+- **Emisyon katsayıları:** Yeni ETKB faktörleri; etkin olunca tüm yıllar yeniden hesaplanır.
+- **Formül** uygulamadan değiştirilmez (FORMUL.md sürüm süreci).
+
+Testler kullanıcı paketlerinden etkilenmez (`conftest.py` boş geçici veri klasörü kullanır).
+
 ## Bilgisayara kurma (masaüstü uygulaması)
 
 ```bat
