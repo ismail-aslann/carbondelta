@@ -6,6 +6,7 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from desktop import theme
+from desktop.version import VERSION
 
 PEOPLE = [
     {"role": "Geliştirici", "name": "İsmail Ali ASLAN", "phone": "05527987865",
@@ -62,8 +63,9 @@ class ContactTab(QWidget):
 
         about, al = theme.card(margins=(18, 12, 18, 12))
         about.setFixedWidth(960)
-        a = QLabel("<b>CarbonDelta</b> · Emisyon Potansiyeli Karar Destek. Endüstriyel yükleri daha temiz saatlere "
-                   "kaydırmanın şebeke emisyonuna etkisini hesaplar; karar her zaman kullanıcıdadır.")
+        a = QLabel(f"<b>CarbonDelta</b> · Sürüm {VERSION} · Emisyon Potansiyeli Karar Destek. Endüstriyel yükleri "
+                   "daha temiz saatlere kaydırmanın şebeke emisyonuna etkisini hesaplar; karar her zaman "
+                   "kullanıcıdadır.")
         a.setWordWrap(True)
         al.addWidget(a)
         root.addWidget(about, 0, Qt.AlignHCenter)

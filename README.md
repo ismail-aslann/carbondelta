@@ -103,6 +103,26 @@ ayrı paketler olarak tutulur (açılıp kapatılabilir, silinebilir). Kod: `eng
 
 Testler kullanıcı paketlerinden etkilenmez (`conftest.py` boş geçici veri klasörü kullanır).
 
+## Kurulum dosyası (başka bilgisayar için)
+
+```bat
+kurulum.bat
+```
+
+Testleri çalıştırır, EXE'yi üretir ve [Inno Setup 6](https://jrsoftware.org/isinfo.php) ile tek dosyalık
+`dist_installer\CarbonDelta_Kurulum_<sürüm>.exe` sihirbazını oluşturur (Inno Setup yoksa:
+`winget install JRSoftware.InnoSetup`). Sürüm numarası `desktop/version.py` içindedir; kurulum betiği
+`installer/carbondelta.iss`.
+
+Kullanıcı tarafında: dosyaya çift tıkla → İleri → Kur. Yönetici izni istemez;
+`%LOCALAPPDATA%\Programs\CarbonDelta` içine kurulur, Başlat menüsüne ve (isteğe bağlı) masaüstüne kısayol
+ekler, *Ayarlar › Uygulamalar*'da görünür ve kaldırıcısı vardır. Yeni sürüm aynı dosyayla üzerine kurulur.
+Kaldırma, geçmişi ve eklenen veri paketlerini (`%APPDATA%\CarbonDelta`) silmez.
+
+`.env` kurulum dosyasına **girmez**. AI kullanılacaksa kurulumdan sonra `.env` dosyası
+`%LOCALAPPDATA%\Programs\CarbonDelta\` içine (EXE'nin yanına) konur; yoksa uygulama AI'sız çalışır.
+Sessiz kurulum: `CarbonDelta_Kurulum_<sürüm>.exe /VERYSILENT /TASKS=desktopicon`.
+
 ## Bilgisayara kurma (masaüstü uygulaması)
 
 ```bat
