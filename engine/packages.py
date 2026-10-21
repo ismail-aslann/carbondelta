@@ -17,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+from engine.appinfo import user_dir
 
 # Kaynaklar (varsayılan veriyle aynı sıra) + 2025'te sıfır olan Nafta/LNG
 SOURCES = [
@@ -43,8 +44,7 @@ def data_dir() -> Path:
     env = os.environ.get("CARBONDELTA_DATA_DIR")
     if env:
         return Path(env)
-    base = os.environ.get("APPDATA") or str(Path.home())
-    return Path(base) / "CarbonDelta" / "veri"
+    return user_dir() / "veri"
 
 
 def norm(text: str) -> str:

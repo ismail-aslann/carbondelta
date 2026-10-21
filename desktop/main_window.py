@@ -33,6 +33,7 @@ from desktop.tabs import CalcTab, HistoryTab, SourcesTab
 from engine import data
 from engine.best_window import best_window
 from engine.core import Result, simulate
+from engine.appinfo import APP_NAME
 
 APP_TITLE = "CarbonDelta — Emisyon Potansiyeli Karar Destek"
 FOOTER_TEXT = "Örnek yük, Balıkesir tesisi değil · Kaynak: EPİAŞ 2025, ETKB 2023, Zenodo"
@@ -257,7 +258,7 @@ class MainWindow(QMainWindow):
 
         titles = QVBoxLayout()
         titles.setSpacing(0)
-        t = QLabel("CarbonDelta")
+        t = QLabel(APP_NAME)
         t.setObjectName("appTitle")
         st = QLabel("Emisyon Potansiyeli Karar Destek")
         st.setObjectName("appSubtitle")

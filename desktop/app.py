@@ -10,11 +10,12 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from desktop import theme
 from desktop.resources import resource_path
 from engine import data
+from engine.appinfo import APP_NAME
 
 
 def create_app(argv: list[str]) -> QApplication:
     app = QApplication(argv)
-    app.setApplicationName("CarbonDelta")
+    app.setApplicationName(APP_NAME)
     app.setStyle("Fusion")
     # Grafik ve kartlar açık renkli; Windows koyu temasında da okunur kalması için açık palet.
     try:

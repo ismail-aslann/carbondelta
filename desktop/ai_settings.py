@@ -11,6 +11,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from engine.appinfo import user_dir
 
 FILE_NAME = "delti_ayarlar.json"
 
@@ -20,8 +21,7 @@ def settings_path() -> Path:
     override = os.environ.get("CARBONDELTA_SETTINGS_DIR")
     if override:
         return Path(override) / FILE_NAME
-    base = os.environ.get("APPDATA") or str(Path.home())
-    return Path(base) / "CarbonDelta" / FILE_NAME
+    return user_dir() / FILE_NAME
 
 
 # ----------------------------------------------------------------- şifreleme

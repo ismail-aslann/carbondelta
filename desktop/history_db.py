@@ -5,6 +5,7 @@ import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from engine.appinfo import user_dir
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS history (
@@ -33,8 +34,7 @@ COLUMNS = ["id", "created_at", "asset_id", "date", "s", "L", "t", "p", "restrict
 
 
 def default_path() -> Path:
-    base = os.environ.get("APPDATA") or str(Path.home())
-    return Path(base) / "CarbonDelta" / "history.db"
+    return user_dir() / "history.db"
 
 
 class HistoryDB:

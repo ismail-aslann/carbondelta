@@ -11,13 +11,13 @@ import time
 import traceback
 from datetime import datetime
 from pathlib import Path
+from engine.appinfo import user_dir
 
 _last_shown = 0.0
 
 
 def log_path() -> Path:
-    base = os.environ.get("APPDATA") or str(Path.home())
-    return Path(base) / "CarbonDelta" / "hata.log"
+    return user_dir() / "hata.log"
 
 
 def write_log(exc_type, exc, tb) -> Path:
