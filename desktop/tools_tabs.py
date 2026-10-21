@@ -14,7 +14,7 @@ from matplotlib.ticker import FuncFormatter  # noqa: E402
 from PySide6.QtCore import QDate, QEvent, Qt, QTimer, Signal  # noqa: E402
 from PySide6.QtGui import QColor  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
-    QAbstractItemView, QComboBox, QDateEdit, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
+    QAbstractItemView, QComboBox, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QPushButton, QSizePolicy, QSlider, QSpinBox, QVBoxLayout, QWidget,
 )
 

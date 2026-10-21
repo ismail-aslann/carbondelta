@@ -45,10 +45,21 @@ def fit_to_screen(window: QMainWindow) -> None:
 
 
 def main() -> int:
-    app = create_app(sys.argv)
-
-    from desktop.main_window import MainWindow
-
-    window = MainWindow()
+    from desktop import errors
+    errors.install()
+    try:
+        app = create_app(sys.argv)
+        from desktop.main_window import MainWindow
+        window = MainWindow()
+    except Exception:  # noqa: BLE001 — açılış hatası: kayda yaz, kullanıcıya göster
+        exc_type, exc, tb = sys.exc_info()
+        path = errors.write_log(exc_type, exc, tb)
+        if QApplication.instance() is None:
+            QApplication(sys.argv)
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.critical(None, "CarbonDelta açılamadı",
+                             f"Uygulama başlatılırken bir hata oluştu:\n{type(exc).__name__}: {exc}\n\n"
+                             f"Ayrıntılar: {path}\n\nBu dosyayı geliştiricilere gönderebilirsiniz.")
+        return 1
     fit_to_screen(window)
     return app.exec()

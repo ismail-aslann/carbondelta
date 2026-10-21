@@ -33,6 +33,26 @@ def _enabled(kind: str) -> list[pk.Package]:
     return [p for p in pk.list_packages() if p.kind == kind and p.enabled]
 
 
+# Okunamayan paketler: {paket id: hata}. Bozuk paket atlanır, uygulama açılmaya devam eder.
+_ERRORS: dict[str, str] = {}
+
+
+def _safe(p: pk.Package, fn):
+    try:
+        return fn()
+    except Exception as e:  # noqa: BLE001
+        _ERRORS[p.id] = f"{type(e).__name__}: {e}"
+        return None
+
+
+def package_errors() -> dict[str, str]:
+    errs = dict(_ERRORS)
+    for p in pk.list_packages():
+        if p.kind == pk.KIND_BROKEN:
+            errs[p.id] = p.meta.get("error", "okunamadı")
+    return errs
+
+
 # ------------------------------------------------------------- emisyon katsayıları
 @lru_cache(maxsize=1)
 def _base_etkb_rows() -> tuple[dict, ...]:
@@ -56,7 +76,12 @@ def _active_factors() -> tuple[dict, str, tuple[dict, ...], bool]:
     if not pkgs:
         return _base_factors(), BASE_FACTORS_LABEL, _base_etkb_rows(), False
     p = pkgs[-1]
-    f = pk.read_factors_csv(p.path / "factors.csv")
+    f = _safe(p, lambda: pk.read_factors_csv(p.path / "factors.csv"))
+    if not f or any(s not in f for s in pk.REQUIRED_FOSSIL):
+        _ERRORS.setdefault(p.id, "katsayı dosyası eksik ya da okunamadı")
+        return _base_factors(), BASE_FACTORS_LABEL, _base_etkb_rows(), False
+    for s in pk.ALL_SOURCES:
+        f.setdefault(s, (0.0, 0.0))
     rows = tuple({"Yakit_Turu_EPIAS_Sutunu": pk.SOURCE_NAMES[s],
                   "Emisyon_Faktoru_tCO2_MWh": repr(f[s][0]), "Emisyon_Faktoru_tCO2esd_MWh": repr(f[s][1]),
                   "Kategori": "Yenilenebilir" if s in pk.RENEWABLE else "Fosil"} for s in pk.ALL_SOURCES if s in f)
@@ -83,9 +108,10 @@ def _epias() -> dict[str, list[dict]]:
     df["_src"] = BASE_GRID_LABEL
     frames.append(df)
     for p in sorted(_enabled(pk.KIND_GRID), key=lambda p: p.created_at):
-        g = pd.read_csv(p.path / "epias.csv", dtype={"Tarih": str}, float_precision="round_trip")
-        g["_src"] = p.name
-        frames.append(g)
+        g = _safe(p, lambda: _read_grid(p))
+        if g is not None:
+            g["_src"] = p.name
+            frames.append(g)
     out: dict[str, list[dict]] = {}
     for frame in frames:  # sonraki paket aynı günü geçersiz kılar
         frame = frame.sort_values(["Tarih", "Saat_No"])
@@ -138,8 +164,11 @@ def _loads() -> dict[tuple[str, str], list[float]]:
     frames = [pd.read_csv(_asset("loads_hourly.csv"), dtype={"AssetId": str, "Tarih": str},
                           float_precision="round_trip")]
     for p in _enabled(pk.KIND_MACHINE):
-        frames.append(pd.read_csv(p.path / "loads.csv", dtype={"AssetId": str, "Tarih": str},
-                                  float_precision="round_trip"))
+        f = _safe(p, lambda: pd.read_csv(p.path / "loads.csv", dtype={"AssetId": str, "Tarih": str},
+                                         float_precision="round_trip")[["AssetId", "Tarih", "Saat_No",
+                                                                        "Saatlik_Tuketim_kWh"]])
+        if f is not None:
+            frames.append(f)
     out: dict[tuple[str, str], list[float]] = {}
     for df in frames:
         df = df.sort_values(["AssetId", "Tarih", "Saat_No"])
@@ -157,7 +186,8 @@ def _machines() -> tuple[dict, ...]:
         m["package"] = None
     extra = []
     for p in _enabled(pk.KIND_MACHINE):
-        for m in json.loads((p.path / "machines.json").read_text(encoding="utf-8")):
+        ms = _safe(p, lambda: _read_machines(p))
+        for m in ms or []:
             m["package"] = p.id
             extra.append(m)
     grid = _epias()
@@ -231,6 +261,26 @@ def preload() -> None:
 
 def reload() -> None:
     """Paket eklenince / açılıp kapatılınca veriyi yeniden okur."""
+    _ERRORS.clear()
     for fn in (_active_factors, _epias, _loads, _machines):
         fn.cache_clear()
     preload()
+
+
+def _read_grid(p: pk.Package) -> pd.DataFrame:
+    g = pd.read_csv(p.path / "epias.csv", dtype={"Tarih": str}, float_precision="round_trip")
+    need = ["Tarih", "Saat_No", "Karbon_Yogunlugu_tCO2_MWh", "Karbon_Yogunlugu_tCO2esd_MWh",
+            "Yenilenebilir_Payi_Yuzde", "Fosil_Payi_Yuzde", "Baskin_Kaynak"]
+    missing = [c for c in need if c not in g.columns]
+    if missing:
+        raise ValueError("eksik sütun: " + ", ".join(missing))
+    return g
+
+
+def _read_machines(p: pk.Package) -> list[dict]:
+    ms = json.loads((p.path / "machines.json").read_text(encoding="utf-8"))
+    for m in ms:
+        for k in ("id", "name", "shiftable", "days"):
+            if k not in m:
+                raise ValueError(f"makine kaydında '{k}' yok")
+    return ms

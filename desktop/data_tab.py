@@ -490,7 +490,17 @@ class DataTab(QWidget):
         base.setData(Qt.UserRole, None)
         base.setSizeHint(QSize(0, 90))
         self.list.addItem(base)
+        errors = data.package_errors()
         for p in pk.list_packages():
+            if p.id in errors:
+                item = QListWidgetItem(f"{p.name}\n⚠ Okunamadı — paket atlandı\n{errors[p.id][:60]}")
+                item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                item.setForeground(QColor(theme.BAD))
+                item.setData(Qt.UserRole, p.id)
+                item.setSizeHint(QSize(0, 90))
+                item.setToolTip(f"{errors[p.id]}\nDelete ile silip dosyayı yeniden ekleyin.")
+                self.list.addItem(item)
+                continue
             item = QListWidgetItem(self._describe(p))
             item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Checked if p.enabled else Qt.Unchecked)
@@ -531,7 +541,7 @@ class DataTab(QWidget):
 
     def _toggle_selected(self) -> None:
         item = self.list.currentItem()
-        if item and item.data(Qt.UserRole):
+        if item and item.data(Qt.UserRole) and item.flags() & Qt.ItemIsUserCheckable:
             item.setCheckState(Qt.Unchecked if item.checkState() == Qt.Checked else Qt.Checked)
 
     def _delete_selected(self) -> None:

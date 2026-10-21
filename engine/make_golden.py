@@ -15,6 +15,7 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from engine import data
+from engine import packages as pk
 from engine.core import (NO_LOAD, NON_SHIFTABLE, OK, RESTRICTED_CONFLICT, SAME_WINDOW,
                          simulate)
 
@@ -108,7 +109,16 @@ def _scenario(rng, kind, used_months, shiftable_ids, fixed_ids):
     raise RuntimeError(f"{kind} için senaryo bulunamadı")
 
 
+def _require_base_data() -> None:
+    """Golden vektörler mobil tarafla paylaşılır: yalnızca varsayılan (yerleşik) veriyle üretilmeli."""
+    active = [p.name for p in pk.list_packages() if p.enabled and p.kind != pk.KIND_BROKEN]
+    if active:
+        raise RuntimeError("Golden vektörler yalnızca varsayılan veriyle üretilir; etkin kullanıcı paketleri var: "
+                           + ", ".join(active) + ". 'python -m engine.make_golden' bunları otomatik yok sayar.")
+
+
 def build_vectors() -> list[dict]:
+    _require_base_data()
     rng = random.Random(SEED)
     machines = data.machines()
     shiftable_ids = [m["id"] for m in machines if m["shiftable"]]
@@ -197,6 +207,11 @@ def write_excel(scenarios: list[dict]) -> None:
 
 
 def main() -> None:
+    # Kullanıcının %APPDATA% veri paketleri golden'a karışmasın: boş geçici veri klasörü.
+    import os
+    import tempfile
+    os.environ["CARBONDELTA_DATA_DIR"] = tempfile.mkdtemp(prefix="carbondelta_golden_")
+    data.reload()
     scenarios = build_vectors()
     write_golden(scenarios)
     write_excel(scenarios)

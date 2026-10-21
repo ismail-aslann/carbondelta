@@ -19,7 +19,7 @@ EXCLUDES = [
     # Başka GUI arka uçları ve geliştirme araçları
     "tkinter", "matplotlib.backends.backend_tkagg", "matplotlib.backends.backend_gtk3agg",
     "matplotlib.backends.backend_wxagg", "PyQt5", "PyQt6", "IPython", "pytest",
-    "openpyxl", "PyInstaller",
+    "PyInstaller",  # openpyxl kalır: Veri sekmesinde Excel (.xlsx) içe aktarma için gerekli
 ]
 
 a = Analysis(
@@ -32,7 +32,7 @@ a = Analysis(
         (str(ROOT / "desktop" / "icon.png"), "desktop"),
         (str(ROOT / "desktop" / "ui"), "desktop/ui"),
     ],
-    hiddenimports=["matplotlib.backends.backend_qtagg", "dotenv"],
+    hiddenimports=["matplotlib.backends.backend_qtagg", "dotenv", "openpyxl"],
     hookspath=[],
     runtime_hooks=[],
     excludes=EXCLUDES,

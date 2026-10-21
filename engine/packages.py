@@ -35,6 +35,7 @@ SOURCE_NAMES = {
 REQUIRED_FOSSIL = ["Dogal_Gaz", "Linyit", "Ithal_Komur", "Fuel_Oil", "Asfaltit_Komur", "Tas_Komur"]
 
 KIND_MACHINE, KIND_GRID, KIND_FACTORS = "machine", "grid", "factors"
+KIND_BROKEN = "broken"  # manifest okunamayan klasör: yalnızca listede gösterilir ve silinebilir
 
 
 # ------------------------------------------------------------------ yardımcılar
@@ -127,6 +128,30 @@ def parse_hour(value) -> int | None:
     return h if 0 <= h <= 23 else None
 
 
+def parse_minute(time_text) -> int:
+    """'03:15' / '3.30' / '03:15:00' → dakika; saat bilgisi yoksa 0. Yalnızca saat metni verilmeli."""
+    m = re.match(r"^\s*\d{1,2}[:.](\d{2})", str(time_text))
+    return int(m.group(1)) if m else 0
+
+
+def _minutes(df: pd.DataFrame) -> pd.Series:
+    """Saat sütunundaki ya da birleşik tarih-saat sütununun saat kısmındaki dakika; yoksa 0."""
+    dcol = find_col(df, "tarih", "date", "gun")
+    # Saat_No (tam sayı) ile "Saat" (03:15) birlikte olabilir: dakika taşıyan ilk saat sütunu kullanılır.
+    for c in df.columns:
+        if c != dcol and norm(c).startswith(("saat", "hour", "time", "zaman")):
+            mins = df[c].map(parse_minute)
+            if mins.any():
+                return mins
+    hcol = find_col(df, "saatno", "saat", "hour")
+    if hcol is not None and hcol != dcol:
+        return df[hcol].map(parse_minute)
+    tcol = find_col(df, "tarihsaat", "tarihsaatanahtari", "datetime", "zaman", "tarih", "date")
+    if tcol is None:
+        return pd.Series(0, index=df.index)
+    return df[tcol].map(lambda v: parse_minute(str(v).strip().split(" ", 1)[1]) if " " in str(v).strip() else 0)
+
+
 def read_table(path: str | Path) -> pd.DataFrame:
     """CSV (; veya ,) ya da Excel dosyasını metin sütunlarıyla okur."""
     path = Path(path)
@@ -215,10 +240,10 @@ def list_packages() -> list[Package]:
             continue
         try:
             m = json.loads(mf.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        out.append(Package(m["id"], m["kind"], m["name"], bool(m.get("enabled", True)),
-                           m.get("created_at", ""), m.get("meta", {}), d))
+            out.append(Package(str(m["id"]), str(m["kind"]), str(m["name"]), bool(m.get("enabled", True)),
+                               str(m.get("created_at", "")), dict(m.get("meta", {})), d))
+        except Exception as e:  # noqa: BLE001 — bozuk paket uygulamayı durdurmaz, listede gösterilir
+            out.append(Package(d.name, KIND_BROKEN, d.name, False, "", {"error": f"manifest okunamadı: {e}"}, d))
     return out
 
 
@@ -229,6 +254,8 @@ def _write_manifest(path: Path, manifest: dict) -> None:
 def set_enabled(pkg_id: str, enabled: bool) -> None:
     for p in list_packages():
         if p.id == pkg_id:
+            if p.kind == KIND_BROKEN:
+                raise ValueError("Okunamayan paket açılamaz; silip yeniden ekleyin.")
             m = json.loads((p.path / "manifest.json").read_text(encoding="utf-8"))
             m["enabled"] = enabled
             _write_manifest(p.path, m)
@@ -283,12 +310,17 @@ def check_machine_file(path: str | Path, grid_dates: set[str]) -> MachineCheck:
     rows = len(df)
     dh = _date_hour(df)
     kcol = find_col(df, "kwh", "saatliktuketimkwh", "saatliktuketim", "tuketim", "enerji", "consumption")
+    power = False
+    if kcol is None:  # enerji yoksa güç (kW): saatlik ortalama güç = o saatin enerjisi (kWh)
+        kcol = find_col(df, "saatlikortalamaguckw", "ortalamaguc", "guckw", "guc", "kw", "power")
+        power = kcol is not None
     if dh is None or kcol is None:
         rep.err("Sütunlar bulunamadı. Beklenen: Tarih, Saat, kWh (ör. 2026-01-01;0;12,40).")
         return MachineCheck(rep, rows=rows)
     dates, hours = dh
+    minutes = _minutes(df)
     vals = df[kcol].map(parse_num)
-    t = pd.DataFrame({"Tarih": dates, "Saat_No": hours, "kWh": vals})
+    t = pd.DataFrame({"Tarih": dates, "Saat_No": hours, "Dakika": minutes, "kWh": vals})
     bad_rows = t["Tarih"].isna() | t["Saat_No"].isna()
     if bad_rows.any():
         sample = ", ".join(_fmt_int(i + 2) for i in t.index[bad_rows][:4])
@@ -298,6 +330,25 @@ def check_machine_file(path: str | Path, grid_dates: set[str]) -> MachineCheck:
     if t.empty:
         rep.err("Okunabilir satır yok.")
         return MachineCheck(rep, rows=rows)
+
+    # Saat altı veri (15 / 30 dk): saatlik toplama çevir
+    mins = sorted(set(t["Dakika"]))
+    if mins != [0]:
+        n = len(mins)
+        if 60 % n or mins != list(range(0, 60, 60 // n)):
+            rep.err(f"Desteklenmeyen zaman aralığı (dakikalar: {', '.join(map(str, mins[:6]))}). "
+                    "Saatlik, 30 veya 15 dakikalık veri kullanın.")
+            return MachineCheck(rep, rows=rows)
+        grp = t.groupby(["Tarih", "Saat_No"], sort=True)
+        agg = grp["kWh"].agg(["count", "sum", "mean"]).reset_index()
+        nan_in = grp["kWh"].apply(lambda s: s.isna().any()).reset_index(drop=True)
+        complete = (agg["count"] == n) & ~nan_in
+        agg["kWh"] = (agg["mean"] if power else agg["sum"]).where(complete)
+        t = agg[["Tarih", "Saat_No", "kWh"]]
+        how = "saatlik ortalama güç alındı (kWh)" if power else "her saatin enerjisi toplandı (kWh)"
+        rep.ok(f"{60 // n} dakikalık veri algılandı; saatliğe çevrildi — {how}")
+    elif power:
+        rep.ok("Güç (kW) sütunu algılandı; saatlik ortalama güç, o saatin enerjisi (kWh) olarak alındı")
 
     all_days = sorted(t["Tarih"].unique())
     rep.ok(f"{_fmt_int(len(all_days))} gün okundu · {_fmt_date(all_days[0])} – {_fmt_date(all_days[-1])}")

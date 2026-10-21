@@ -304,15 +304,41 @@ MACHINE_KEYWORDS = [
 ]
 
 
+_TR = str.maketrans("çğıöşüâîû", "cgiosuaiu")
+
+
+def _fold_with_index(text: str) -> tuple[str, list[int]]:
+    """Türkçe harfleri sadeleştirip harf/rakam dışını atar; her karakterin özgün konumunu tutar."""
+    out, idx = [], []
+    for i, ch in enumerate(text.lower().replace("i̇", "i")):
+        c = ch.translate(_TR)
+        if c.isascii() and c.isalnum():
+            out.append(c)
+            idx.append(i)
+    return "".join(out), idx
+
+
 def parse_nl_rule(sentence: str) -> dict:
     """AI yokken basit kural tabanlı çözümleyici (Türkçe kalıplar)."""
     text = sentence.lower()
     out: dict = {}
     ids = {m["id"] for m in data.machines()}
-    for token in re.findall(r"[a-z]+_[a-z]+", text):
+    for token in re.findall(r"[a-z]+_[a-z0-9_]+", text):
         if token in ids:
             out["asset_id"] = token
             break
+    if "asset_id" not in out:
+        # Kayıtlı makine adları (eklenen makineler dahil); en uzun ad önce. Eşleşen ad metinden
+        # çıkarılır ki "Hat 2" gibi adlardaki sayılar saat sanılmasın.
+        folded, index = _fold_with_index(text)
+        for m in sorted(data.machines(), key=lambda m: -len(_fold_with_index(m["name"])[0])):
+            name = _fold_with_index(m["name"].lower())[0]
+            pos = folded.find(name) if len(name) >= 3 else -1
+            if pos >= 0:
+                out["asset_id"] = m["id"]
+                a, b = index[pos], index[pos + len(name) - 1] + 1
+                text = text[:a] + " " * (b - a) + text[b:]
+                break
     if "asset_id" not in out:
         for asset_id, keys in MACHINE_KEYWORDS:
             if any(k in text for k in keys):

@@ -9,7 +9,7 @@ from datetime import date as Date
 from PySide6.QtCore import QDate, QSize, Qt, QTimer
 from PySide6.QtGui import QBrush, QColor, QIcon, QKeySequence, QShortcut, QTextCharFormat, QValidator
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QCheckBox, QComboBox, QDateEdit, QDoubleSpinBox, QFormLayout,
+    QApplication, QButtonGroup, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout,
     QFrame, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
     QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider, QSpinBox, QStackedWidget,
     QTabWidget,
@@ -715,6 +715,12 @@ class MainWindow(QMainWindow):
             param_kwh=h["param_kwh"] if h["param_kwh"] is not None else 50.0,
         ))
         self.tabs.setCurrentWidget(self.scenario_tab)
+        opened = self.inputs().date
+        if opened != h["date"]:
+            QMessageBox.information(
+                self, "Gün değişti",
+                f"Kaydın günü ({fmt.date(h['date'])}) artık veride yok (şebeke ya da makine paketi kapatılmış "
+                f"olabilir). En yakın gün olan {fmt.date(opened)} açıldı; sonuç kayıttakinden farklı olabilir.")
 
     def _update_card(self, c: Computation) -> None:
         r = c.result
