@@ -316,6 +316,7 @@ class NLTab(QWidget):
 
     submit = Signal(str)          # cümle (ana pencere AI/kural çözümleyiciye gönderir)
     open_requested = Signal(dict)  # doğrulanmış girdiler
+    settings_requested = Signal()  # Delti ayarları penceresi
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -346,7 +347,31 @@ class NLTab(QWidget):
                          " padding: 2px 10px; font-size: 8.5pt; font-weight: 600;")
         ai.setToolTip("Delti bir yapay zekâ yardımcısıdır; hesap yapmaz, karar sizindir.")
         top.addWidget(ai, 0, Qt.AlignTop)
+        gear = QPushButton("⚙ Ayarlar")
+        gear.setToolTip("Delti ayarları: API anahtarı (Ctrl+,)")
+        gear.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        gear.clicked.connect(self.settings_requested)
+        top.addWidget(gear, 0, Qt.AlignTop)
         lay.addLayout(top)
+
+        # Anahtar yoksa: Delti uyuyor uyarısı + ayarlara giden düğme
+        self.sleep_bar = QWidget()
+        sl = QHBoxLayout(self.sleep_bar)
+        sl.setContentsMargins(12, 8, 8, 8)
+        msg = QLabel("<b>Delti uyuyor.</b> AI anahtarı girilmemiş; cümleler yine de basit kurallarla "
+                     "çözülür. Delti'yi uyandırmak için anahtarınızı girin.")
+        msg.setWordWrap(True)
+        msg.setStyleSheet(f"color: {theme.WARN}; background: transparent;")
+        sl.addWidget(msg, 1)
+        wake = QPushButton("Delti'yi uyandır")
+        wake.setObjectName("primary")
+        wake.clicked.connect(self.settings_requested)
+        sl.addWidget(wake, 0, Qt.AlignVCenter)
+        self.sleep_bar.setObjectName("sleepBar")
+        self.sleep_bar.setStyleSheet(f"QWidget#sleepBar {{ background: {theme.WARN_SOFT}; border: 1px solid #f0d9a8;"
+                                     " border-radius: 10px; }")
+        self.sleep_bar.setAttribute(Qt.WA_StyledBackground, True)
+        lay.addWidget(self.sleep_bar)
 
         self.bubble = QLabel("Hangi makineyi hangi saatten hangi saate almak istersiniz? "
                              "İsterseniz kaydırma oranını da söyleyin.")
@@ -427,6 +452,11 @@ class NLTab(QWidget):
     def focus_input(self) -> None:
         self.edit.setFocus()
         self.edit.selectAll()
+
+    def set_online(self, online: bool) -> None:
+        self.sleep_bar.setVisible(not online)
+        if not self._merged:
+            self.avatar.setPixmap(delti.pixmap("ready" if online else "sleep", 56, self._dpr))
 
     def clear(self) -> None:
         self.edit.clear()

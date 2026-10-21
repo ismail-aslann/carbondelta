@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from desktop import ai_context, delti, fmt, theme
-from desktop.ai_client import AIReply, AIRequest, AIService, parse_json_reply, prompts
+from desktop.ai_client import AIReply, AIRequest, AIService, load_config, parse_json_reply, prompts
 from desktop.chart_widget import ChartWidget
 from desktop.history_db import HistoryDB
 from desktop.resources import resource_path
@@ -27,6 +27,7 @@ from desktop.tools_tabs import BestWindowTab, NLTab
 from desktop.guide_tab import GuideTab
 from desktop.data_tab import DataTab
 from desktop.contact_tab import ContactTab
+from desktop.delti_settings import DeltiSettingsDialog
 from desktop.keyboard import DateEdit, KeyboardHelper
 from desktop.tabs import CalcTab, HistoryTab, SourcesTab
 from engine import data
@@ -197,6 +198,8 @@ class MainWindow(QMainWindow):
         self.nl_tab = NLTab()
         self.nl_tab.submit.connect(self.submit_nl_page)
         self.nl_tab.open_requested.connect(self.open_nl_result)
+        self.nl_tab.settings_requested.connect(self.open_delti_settings)
+        self.nl_tab.set_online(self.ai.online)
         self.tabs.addTab(self.nl_tab, "Delti'ye Sor")
         self.calc_tab = CalcTab()
         self.tabs.addTab(self.calc_tab, "Hesabı Göster")
@@ -545,6 +548,8 @@ class MainWindow(QMainWindow):
         menu.addAction("Veri kaynakları", lambda: self.request_manual(lambda c: ai_context.data_source_explain()))
         menu.addSeparator()
         menu.addAction("Metni kopyala", lambda: QApplication.clipboard().setText(self.ai_text.toPlainText()))
+        menu.addSeparator()
+        menu.addAction("Delti ayarları…  (Ctrl+,)", self.open_delti_settings)
         more.setMenu(menu)
         actions.addWidget(more)
         actions.addStretch(1)
@@ -824,6 +829,22 @@ class MainWindow(QMainWindow):
         self.start._select(0)
         self.start.setFocus()
 
+    def open_delti_settings(self) -> None:
+        dlg = DeltiSettingsDialog(self.ai.cfg, self)
+        if dlg.exec():
+            self.ai.set_config(load_config())
+            self._apply_ai_state()
+
+    def _apply_ai_state(self) -> None:
+        """Delti açıldı/kapandı: durum satırları ve mevcut senaryonun açıklaması yenilenir."""
+        online = self.ai.online
+        self.nl_tab.set_online(online)
+        self.start.set_status(online, len(data.machines()))
+        self._set_nl_status("Delti uyanık." if online else "Delti uyuyor: Delti ayarlarından anahtar girin (Ctrl+,).",
+                            "ok" if online else "info")
+        if self.current is not None:
+            self._schedule_auto_ai()
+
     def _open_app(self, tab: QWidget) -> None:
         self.pages.setCurrentIndex(1)
         self.tabs.setCurrentWidget(tab)
@@ -857,6 +878,8 @@ class MainWindow(QMainWindow):
             self._open_app(self.contact_tab)
         elif key == "sources":
             self._open_app(self.sources_tab)
+        elif key == "delti_settings":
+            self.open_delti_settings()
 
     def new_scenario(self) -> None:
         """Temiz başlangıç: makine ve gün korunur; kısıtlar, oran ve mod sıfırlanır."""
@@ -908,6 +931,7 @@ class MainWindow(QMainWindow):
 
         sc("Esc", self._on_escape)
         sc("F1", self.open_guide)
+        sc("Ctrl+,", self.open_delti_settings)
         for n in range(self.tabs.count()):
             sc(f"Ctrl+{n + 1}", lambda n=n: self._open_app(self.tabs.widget(n)))
         sc("Ctrl+Tab", lambda: self._cycle_tab(1), app_only=True)

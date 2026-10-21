@@ -119,8 +119,8 @@ Kullanıcı tarafında: dosyaya çift tıkla → İleri → Kur. Yönetici izni 
 ekler, *Ayarlar › Uygulamalar*'da görünür ve kaldırıcısı vardır. Yeni sürüm aynı dosyayla üzerine kurulur.
 Kaldırma, geçmişi ve eklenen veri paketlerini (`%APPDATA%\CarbonDelta`) silmez.
 
-`.env` kurulum dosyasına **girmez**. AI kullanılacaksa kurulumdan sonra `.env` dosyası
-`%LOCALAPPDATA%\Programs\CarbonDelta\` içine (EXE'nin yanına) konur; yoksa uygulama AI'sız çalışır.
+`.env` kurulum dosyasına **girmez**. AI anahtarı kurulumdan sonra uygulamadaki **Delti ayarları**
+ekranından (`Ctrl+,`) girilir; anahtar yoksa uygulama AI'sız çalışır.
 Sessiz kurulum: `CarbonDelta_Kurulum_<sürüm>.exe /VERYSILENT /TASKS=desktopicon`.
 
 ## Bilgisayara kurma (masaüstü uygulaması)
@@ -140,7 +140,13 @@ Uygulamadaki AI yardımcısının adı **Delti**'dir (maskot: logodaki delta ü�
 `desktop/delti.py`). Delti hesap yapmaz; motorun sonuçlarını açıklar ve "Delti'ye Sor" sekmesinde
 cümleleri senaryoya çevirir. Yanında her zaman "AI" etiketi durur; karar kullanıcıdadır.
 
-`.env.example` dosyasını `.env` olarak kopyalayın:
+**Uygulama içinden (önerilen):** Delti'ye Sor › *Delti'yi uyandır* / *⚙ Ayarlar*, ana sayfadaki *uyandır*
+bağlantısı ya da `Ctrl+,` ile **Delti ayarları** açılır: sağlayıcı seçilir, anahtar yapıştırılır, *Bağlantıyı dene*
+ile kontrol edilip kaydedilir. Anahtar `%APPDATA%\CarbonDelta\delti_ayarlar.json` içinde Windows DPAPI ile
+şifreli durur (yalnızca aynı bilgisayardaki aynı kullanıcı çözebilir; güncelleme/kaldırma silmez). Kod:
+`desktop/ai_settings.py`, `desktop/delti_settings.py`. Öncelik: ortam değişkeni > uygulama ayarı > `.env`.
+
+**Dosyayla:** `.env.example` dosyasını `.env` olarak kopyalayın:
 
 ```
 LLM_PROVIDER=gemini        # veya claude

@@ -1,6 +1,7 @@
 """AI açıklama katmanı: LLM yalnızca motorun ürettiği sayıları metne çevirir.
 
-- .env: LLM_PROVIDER (gemini | claude), LLM_API_KEY, LLM_MODEL
+- Ayarlar: uygulamadaki "Delti ayarları" (desktop/ai_settings.py) veya .env:
+  LLM_PROVIDER (gemini | claude), LLM_API_KEY, LLM_MODEL
 - İstekler QThread içinde, 15 sn zaman aşımı; arayüz donmaz.
 - Metindeki her sayı girdilerdeki sayılarla doğrulanır; uymazsa şablon metin gösterilir.
 - Anahtar/internet yoksa veya hata olursa: çevrimdışı mesajı + şablon metin.
@@ -41,6 +42,7 @@ class AIConfig:
     provider: str
     api_key: str
     model: str
+    source: str = ""   # anahtarın geldiği yer: "ortam" | "uygulama" | ".env" | ""
 
     @property
     def enabled(self) -> bool:
@@ -48,18 +50,30 @@ class AIConfig:
 
 
 def load_config() -> AIConfig:
+    """Öncelik: ortam değişkenleri > uygulamadaki Delti ayarları > .env dosyası."""
+    from desktop import ai_settings
+
     try:
         from dotenv import dotenv_values
-        file_vals = dotenv_values(env_path()) if env_path().exists() else {}
+        vals = dict(dotenv_values(env_path())) if env_path().exists() else {}
     except ImportError:
-        file_vals = {}
+        vals = {}
+    source = ".env" if (vals.get("LLM_API_KEY") or "").strip() else ""
+    saved = ai_settings.load()
+    if saved.get("api_key"):
+        vals = {"LLM_PROVIDER": saved["provider"], "LLM_API_KEY": saved["api_key"], "LLM_MODEL": saved["model"]}
+        source = "uygulama"
+    if os.environ.get("LLM_API_KEY", "").strip():
+        source = "ortam"
 
     def get(key: str) -> str:
-        return (os.environ.get(key) or file_vals.get(key) or "").strip()
+        return (os.environ.get(key) or vals.get(key) or "").strip()
 
     provider = (get("LLM_PROVIDER") or "gemini").lower()
-    return AIConfig(provider=provider, api_key=get("LLM_API_KEY"),
-                    model=get("LLM_MODEL") or DEFAULT_MODELS.get(provider, ""))
+    api_key = get("LLM_API_KEY")
+    return AIConfig(provider=provider, api_key=api_key,
+                    model=get("LLM_MODEL") or DEFAULT_MODELS.get(provider, ""),
+                    source=source if api_key else "")
 
 
 @lru_cache(maxsize=1)
@@ -202,6 +216,34 @@ def call_llm(cfg: AIConfig, system: str, user: str, json_mode: bool = False) -> 
     return _call_gemini(cfg, system, user, json_mode)
 
 
+def friendly_error(err: str) -> str:
+    """AIError metnini kullanıcıya gösterilecek kısa Türkçe açıklamaya çevirir."""
+    m = re.match(r"HTTP (\d+)", err)
+    code = int(m.group(1)) if m else 0
+    if code in (401, 403) or (code == 400 and re.search(r"API_KEY|api key|apikey", err, re.I)):
+        return "Anahtar geçersiz ya da bu sağlayıcıya ait değil."
+    if code == 404:
+        return "Model bulunamadı. Model alanını boş bırakıp tekrar deneyin."
+    if code == 429:
+        return "Anahtar çalışıyor ama kullanım sınırı doldu; biraz sonra tekrar deneyin."
+    if code >= 500:
+        return "Sağlayıcı şu an yanıt veremiyor; biraz sonra tekrar deneyin."
+    if err.startswith("Bağlantı hatası"):
+        return "İnternete bağlanılamadı. Bağlantıyı veya güvenlik duvarını kontrol edin."
+    return err[:160]
+
+
+def check_connection(cfg: AIConfig) -> tuple[bool, str]:
+    """Kısa bir istekle anahtarı dener (engelleyici; arka planda çağrılır)."""
+    if not cfg.api_key:
+        return False, "Önce API anahtarını girin."
+    try:
+        call_llm(cfg, "Kısa yanıt ver.", "Yalnızca 'tamam' yaz.")
+    except AIError as e:
+        return False, friendly_error(str(e))
+    return True, "Bağlantı başarılı. Delti uyanık."
+
+
 def parse_json_reply(text: str) -> dict:
     """```json ... ``` sarmalı olsa da ilk JSON nesnesini çıkarır."""
     m = re.search(r"\{.*\}", text, re.S)
@@ -307,6 +349,11 @@ class AIService(QObject):
     @property
     def online(self) -> bool:
         return self.cfg.enabled
+
+    def set_config(self, cfg: AIConfig) -> None:
+        """Delti ayarları değişince: yeni anahtar/model, eski önbellek geçersiz."""
+        self.cfg = cfg
+        self._cache.clear()
 
     def submit(self, req: AIRequest, tag) -> None:
         key = req.cache_key()

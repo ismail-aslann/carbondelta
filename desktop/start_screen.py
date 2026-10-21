@@ -241,6 +241,8 @@ class StartScreen(QWidget):
         foot.addWidget(left, 1)
         self.status = QLabel("")
         self.status.setObjectName("foot")
+        self.status.setTextInteractionFlags(Qt.LinksAccessibleByMouse)
+        self.status.linkActivated.connect(lambda _l: self.action.emit("delti_settings"))
         foot.addWidget(self.status)
         root.addLayout(foot)
 
@@ -260,9 +262,11 @@ class StartScreen(QWidget):
 
     def set_status(self, ai_online: bool, machine_count: int) -> None:
         dot = MINT if ai_online else "#8aa39a"
-        ai = "Delti (AI) çevrimiçi" if ai_online else "Delti (AI) çevrimdışı"
-        self.status.setText(f"<span style='color:{dot}'>●</span> {ai}   ·   {machine_count} makine   ·   "
-                            "İnternetsiz hesap")
+        ai = "Delti (AI) çevrimiçi" if ai_online else "Delti (AI) uyuyor"
+        link = "ayarlar" if ai_online else "uyandır"
+        self.status.setText(f"<span style='color:{dot}'>●</span> {ai} "
+                            f"(<a href='delti' style='color:{MINT};'>{link}</a> · Ctrl+,)   ·   "
+                            f"{machine_count} makine   ·   İnternetsiz hesap")
 
     # ---------------------------------------------------------- seçim/klavye
     def _select(self, i: int) -> None:

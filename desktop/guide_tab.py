@@ -101,8 +101,13 @@ terim açıklayıcı, veri kaynakları ve metni kopyala.</li>
 <p><b>Güvenlik:</b> Delti'nin metnindeki her sayı hesaplanan değerlerle karşılaştırılır; veride olmayan bir sayı
 yazarsa metin gösterilmez, yerine şablon metin gelir. Etikette <i>AI</i>, <i>Düşünüyor…</i>,
 <i>Çevrimdışı · şablon</i> veya <i>Şablon · doğrulanamadı</i> yazar.</p>
-<p><b>İnternet yoksa</b> Delti uyur: “Delti (AI) şu an çevrimdışı; hesap sonucu geçerlidir.” Yüzde ve tüm
-hesaplar çalışmaya devam eder.</p>"""),
+<p><b>İnternet ya da anahtar yoksa</b> Delti uyur: “Delti (AI) şu an çevrimdışı; hesap sonucu geçerlidir.”
+Yüzde ve tüm hesaplar çalışmaya devam eder.</p>
+<p><b>Delti'yi uyandırmak (API anahtarı):</b> Delti'ye Sor sekmesindeki <i>Delti'yi uyandır</i> / <i>⚙ Ayarlar</i>
+düğmesi, ana sayfanın altındaki <i>uyandır</i> bağlantısı ya da Ctrl+, ile <b>Delti ayarları</b> açılır.
+Sağlayıcıyı (Google Gemini veya Anthropic Claude) seçin, anahtarı yapıştırın, <i>Bağlantıyı dene</i> ile
+kontrol edip <i>Kaydet</i>'e basın. Anahtar bu bilgisayarda, yalnızca sizin Windows hesabınızın çözebileceği
+şekilde şifrelenerek saklanır; program güncellense de silinmez. <i>Anahtarı kaldır</i> ile silinir.</p>"""),
 
     ("calc", "Hesap dökümü", """
 <p>Hesabın saat saat dökümünü gösterir: her standart saatten taşınan enerji, o saatin ve hedef saatin karbon
@@ -155,6 +160,7 @@ değişikliği <i>shared/FORMUL.md</i> sürüm süreciyle geliştiriciler taraf�
 <table cellspacing="0" cellpadding="5">
 <tr><td>{_k('Esc')}</td><td>Ana sayfaya dön (açık bir liste/takvim varsa önce onu kapatır)</td></tr>
 <tr><td>{_k('F1')}</td><td>Kullanma kılavuzu</td></tr>
+<tr><td>{_k('Ctrl', ',')}</td><td>Delti ayarları (API anahtarı)</td></tr>
 <tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '9')}</td><td>Senaryo · En Temiz Saat · Delti'ye Sor · Hesabı Göster · Geçmiş · Veri · Kılavuz · Kaynaklar · İletişim</td></tr>
 <tr><td>{_k('Ctrl', 'Tab')} / {_k('Ctrl', 'Shift', 'Tab')}</td><td>Sonraki / önceki sekme</td></tr>
 <tr><td>{_k('Tab')} / {_k('Shift', 'Tab')}</td><td>Alanlar arasında ileri / geri</td></tr>
