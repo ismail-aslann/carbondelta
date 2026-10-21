@@ -24,6 +24,7 @@ from desktop.history_db import HistoryDB
 from desktop.resources import resource_path
 from desktop.start_screen import StartScreen
 from desktop.tools_tabs import BestWindowTab, NLTab
+from desktop.annual_tab import AnnualTab
 from desktop.guide_tab import GuideTab
 from desktop.data_tab import DataTab
 from desktop.contact_tab import ContactTab
@@ -35,7 +36,7 @@ from engine.best_window import best_window
 from engine.core import Result, simulate
 from engine.appinfo import APP_NAME
 
-APP_TITLE = "CarbonDelta — Emisyon Potansiyeli Karar Destek"
+APP_TITLE = f"{APP_NAME} — Emisyon Potansiyeli Karar Destek"
 FOOTER_TEXT = "Örnek yük, Balıkesir tesisi değil · Kaynak: EPİAŞ 2025, ETKB 2023, Zenodo"
 NON_SHIFTABLE_TEXT = "Bu yük kaydırılamaz (sürekli/kısıtlı süreç). Öneri üretilmez."
 CI_LABELS = {"tCO2": "tCO2", "tCO2esd": "tCO2-eşd"}
@@ -196,6 +197,9 @@ class MainWindow(QMainWindow):
         self.best_tab = BestWindowTab(HourSpinBox)
         self.best_tab.apply_requested.connect(self.apply_best_choice)
         self.tabs.addTab(self.best_tab, "En Temiz Saat")
+        self.annual_tab = AnnualTab(HourSpinBox)
+        self.annual_tab.apply_requested.connect(self.apply_best_choice)
+        self.tabs.addTab(self.annual_tab, "Yıllık Etki")
         self.nl_tab = NLTab()
         self.nl_tab.submit.connect(self.submit_nl_page)
         self.nl_tab.open_requested.connect(self.open_nl_result)
@@ -794,6 +798,7 @@ class MainWindow(QMainWindow):
         self.data_tab.refresh()
         self.reload_machines()
         self.best_tab.reload_machines()
+        self.annual_tab.reload_machines()
         self.calc_tab._fill_etkb()
         self.history_tab.refresh()
         self.refresh_start()
@@ -864,6 +869,8 @@ class MainWindow(QMainWindow):
             self._open_app(self.scenario_tab)
         elif key == "best":
             self._open_app(self.best_tab)
+        elif key == "annual":
+            self._open_app(self.annual_tab)
         elif key == "nl":
             self._open_app(self.nl_tab)
             self.nl_tab.focus_input()
@@ -891,6 +898,9 @@ class MainWindow(QMainWindow):
         if self.tabs.currentWidget() is self.best_tab:
             i = self.inputs()
             self.best_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.p, i.restricted)
+        elif self.tabs.currentWidget() is self.annual_tab:
+            i = self.inputs()
+            self.annual_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.t, i.p, i.restricted, i.ci_kind)
         QTimer.singleShot(0, self._focus_current_tab)
 
     def _focus_current_tab(self) -> None:
@@ -902,6 +912,8 @@ class MainWindow(QMainWindow):
             self.machine_combo.setFocus(Qt.TabFocusReason)
         elif tab is self.best_tab:
             self.best_tab.table.setFocus(Qt.TabFocusReason)
+        elif tab is self.annual_tab:
+            self.annual_tab.focus_default()
         elif tab is self.nl_tab:
             self.nl_tab.focus_input()
         elif tab is self.calc_tab:
@@ -934,7 +946,7 @@ class MainWindow(QMainWindow):
         sc("F1", self.open_guide)
         sc("Ctrl+,", self.open_delti_settings)
         for n in range(self.tabs.count()):
-            sc(f"Ctrl+{n + 1}", lambda n=n: self._open_app(self.tabs.widget(n)))
+            sc(f"Ctrl+{(n + 1) % 10}", lambda n=n: self._open_app(self.tabs.widget(n)))
         sc("Ctrl+Tab", lambda: self._cycle_tab(1), app_only=True)
         sc("Ctrl+Shift+Tab", lambda: self._cycle_tab(-1), app_only=True)
         sc("Ctrl+Backtab", lambda: self._cycle_tab(-1), app_only=True)

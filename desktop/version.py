@@ -1,2 +1,2 @@
-"""Uygulama sürümü (kurulum dosyası ve İletişim sekmesi bunu kullanır)."""
-VERSION = "1.1.0"
+﻿"""Uygulama sÃ¼rÃ¼mÃ¼ (kurulum dosyasÄ± ve Ä°letiÅŸim sekmesi bunu kullanÄ±r)."""
+VERSION = "1.2.0"

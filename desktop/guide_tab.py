@@ -81,6 +81,17 @@ sıralanır (en üstte en temiz). Senaryo ekranındaki kısıtlı saatler burada
 saatteki değişimi gösterir; çerçeveli çubuk en temiz penceredir.</p>
 <p>Tabloda {_k('↑')} {_k('↓')} ile satır seçip {_k('Enter')} ile o saati senaryoya uygularsınız.</p>"""),
 
+    ("annual", "Yıllık Etki", """
+<p>Senaryo ekranındaki kaydırma (makine, standart saat, hedef saat, uzunluk, oran ve kısıtlı saatler) seçilen
+yılın verisi olan <b>her gününde</b> aynı formülle hesaplanır ve toplanır. Sonuç: yılda kaç kg/ton CO2
+azalacağı, kaydırılan yükteki yüzde değişim ve makinenin toplam emisyonu içindeki payı.</p>
+<p><b>Yıllık değişim</b> = (ΣS − ΣB) / ΣB × 100. Standart pencerede yükün olmadığı ya da hedefin kısıtlı
+olduğu günler toplama girmez ve <i>Hesaba giren gün</i> kutusunda görünür. Makine verisi yılın tamamını
+kapsamıyorsa sonuç yalnızca verisi olan günlerin toplamıdır; yıla tamamlama yapılmaz.</p>
+<p>Ekran ayrıca yıl boyunca sabit tutulabilecek <b>en temiz hedef saati</b> gösterir. <i>Bu hedefi dene</i>
+onu seçer, <i>Senaryoya uygula</i> saatleri Senaryo sekmesine aktarır. Aylık tablo ve grafik mevsim
+farklarını gösterir; <i>CSV olarak dışa aktar</i> özet ve aylık dökümü kaydeder.</p>"""),
+
     ("delti", "Delti'ye Sor", f"""
 <p><b>Delti</b>, CarbonDelta'nın yapay zekâ (AI) yardımcısıdır. Hesap yapmaz; motorun hesapladığı sonuçları
 açıklar ve günlük dille yazdıklarınızı senaryoya çevirir.</p>
@@ -161,7 +172,7 @@ değişikliği <i>shared/FORMUL.md</i> sürüm süreciyle geliştiriciler taraf�
 <tr><td>{_k('Esc')}</td><td>Ana sayfaya dön (açık bir liste/takvim varsa önce onu kapatır)</td></tr>
 <tr><td>{_k('F1')}</td><td>Kullanma kılavuzu</td></tr>
 <tr><td>{_k('Ctrl', ',')}</td><td>Delti ayarları (API anahtarı)</td></tr>
-<tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '9')}</td><td>Senaryo · En Temiz Saat · Delti'ye Sor · Hesabı Göster · Geçmiş · Veri · Kılavuz · Kaynaklar · İletişim</td></tr>
+<tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '0')}</td><td>Senaryo · En Temiz Saat · Yıllık Etki · Delti'ye Sor · Hesabı Göster · Geçmiş · Veri · Kılavuz · Kaynaklar · İletişim</td></tr>
 <tr><td>{_k('Ctrl', 'Tab')} / {_k('Ctrl', 'Shift', 'Tab')}</td><td>Sonraki / önceki sekme</td></tr>
 <tr><td>{_k('Tab')} / {_k('Shift', 'Tab')}</td><td>Alanlar arasında ileri / geri</td></tr>
 <tr><td>{_k('↑')} {_k('↓')}</td><td>Sayı ve saat değerini değiştir, listede seç, kaydırıcıyı oynat</td></tr>
