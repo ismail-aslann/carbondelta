@@ -64,6 +64,24 @@ kapsam dışıdır. Yapay zekâ yalnızca hesaplanmış sayıları açıklama me
 hesap yine çalışır.</span>
 """
 
+METHOD_HTML = f"""
+<b>Yöntem ve sınırlılıklar</b>
+<ul style="margin-top:4px">
+<li><b>Ortalama karbon yoğunluğu:</b> Her saatin yoğunluğu o saatteki yurt içi üretim karışımından hesaplanır
+(konum bazlı yöntem). Bir yükü kaydırmanın şebekedeki gerçek etkisi, o saatte üretimini artıran ya da azaltan
+<i>marjinal</i> santrale bağlıdır. Bu nedenle sonuçlar karşılaştırma ve önceliklendirme için bir göstergedir;
+marjinal emisyon faktörü desteği ileride eklenebilir.</li>
+<li><b>Faktör yılı:</b> ETKB 2023 emisyon faktörleri 2025 üretimine uygulanır; yeni faktörler Veri sekmesinden
+eklenebilir.</li>
+<li><b>Kapsam:</b> Yalnızca EPİAŞ gerçek zamanlı üretim verisindeki yurt içi üretim kullanılır; elektrik ithalatı/
+ihracatı ve bu veride yer almayan üretim (ör. dağıtık güneşin bir kısmı) hesaba girmez.</li>
+<li><b>Kaydırma varsayımı:</b> Kaydırılan enerji miktarı aynı kalır, yük aynı gün içinde taşınır; verim, bekleme
+ve ısıl kayıp farkları yoktur. Vardiya, personel ve kalite gibi işletme kısıtları kullanıcı tarafından
+<i>kısıtlı saat</i> olarak girilir.</li>
+<li><b>Yıllık etki:</b> Yalnızca verisi olan günlerin toplamıdır; eksik günler tahminle tamamlanmaz.</li>
+</ul>
+"""
+
 WINDOW_LABELS = {"standard": "Standart", "scenario": "Seçilen"}
 STATUS_LABELS = {
     "ok": "Tamam",
@@ -460,6 +478,12 @@ class SourcesTab(QWidget):
         n.setWordWrap(True)
         nl.addWidget(n)
         root.addWidget(note)
+
+        method, ml = theme.card(margins=(16, 12, 16, 12))
+        m = QLabel(METHOD_HTML)
+        m.setWordWrap(True)
+        ml.addWidget(m)
+        root.addWidget(method)
 
         scope, sl = theme.card(margins=(16, 12, 16, 12))
         s = QLabel(SCOPE_HTML)

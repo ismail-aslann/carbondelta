@@ -8,3 +8,4 @@ build/
 *.spec.bak
 .pytest_cache/
 dist_installer/
+basvuru/.araclar/

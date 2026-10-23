@@ -171,6 +171,7 @@ değişikliği <i>shared/FORMUL.md</i> sürüm süreciyle geliştiriciler taraf�
 <table cellspacing="0" cellpadding="5">
 <tr><td>{_k('Esc')}</td><td>Ana sayfaya dön (açık bir liste/takvim varsa önce onu kapatır)</td></tr>
 <tr><td>{_k('F1')}</td><td>Kullanma kılavuzu</td></tr>
+<tr><td>{_k('F11')}</td><td>Tam ekran (sunum modu) aç/kapat</td></tr>
 <tr><td>{_k('Ctrl', ',')}</td><td>Delti ayarları (API anahtarı)</td></tr>
 <tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '0')}</td><td>Senaryo · En Temiz Saat · Yıllık Etki · Delti'ye Sor · Hesabı Göster · Geçmiş · Veri · Kılavuz · Kaynaklar · İletişim</td></tr>
 <tr><td>{_k('Ctrl', 'Tab')} / {_k('Ctrl', 'Shift', 'Tab')}</td><td>Sonraki / önceki sekme</td></tr>
@@ -193,7 +194,9 @@ en üstte {_k('↑')} ile <i>Son senaryo</i> kartına çıkılır.</p>"""),
 <li><b>ETKB 2023:</b> Yakıt türü başına resmî emisyon faktörleri.</li>
 <li><b>Zenodo:</b> Bir imalat tesisindeki makinelerin temizlenmiş enerji ölçümleri (7 makine).</li>
 </ul>
-<p><b>Sınırlılıklar:</b> Yük örnek veridir; kaydırma aynı gün içindedir; hesap saatlik ortalamayla yapılır;
+<p><b>Sınırlılıklar:</b> Yük örnek veridir; kaydırma aynı gün içindedir; hesap saatlik <i>ortalama</i> karbon
+yoğunluğuyla yapılır (gerçek etki o saatteki marjinal santrale bağlıdır, sonuçlar gösterge niteliğindedir);
+ETKB 2023 faktörleri 2025 üretimine uygulanır; ithalat/ihracat hesaba girmez;
 Delti'nin açıklamaları için internet ve API anahtarı gerekir. Para/TL kazancı, CBAM hesabı, sensör bağlantısı ve
 otomatik makine kontrolü kapsam dışıdır.</p>"""),
 ]

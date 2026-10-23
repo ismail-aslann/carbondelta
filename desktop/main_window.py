@@ -835,6 +835,13 @@ class MainWindow(QMainWindow):
         self.start._select(0)
         self.start.setFocus()
 
+    def toggle_fullscreen(self) -> None:
+        """Sunum modu: projeksiyonda pencere çerçevesi ve görev çubuğu olmadan."""
+        if self.isFullScreen():
+            self.showMaximized()
+        else:
+            self.showFullScreen()
+
     def open_delti_settings(self) -> None:
         dlg = DeltiSettingsDialog(self.ai.cfg, self)
         if dlg.exec():
@@ -945,6 +952,7 @@ class MainWindow(QMainWindow):
         sc("Esc", self._on_escape)
         sc("F1", self.open_guide)
         sc("Ctrl+,", self.open_delti_settings)
+        sc("F11", self.toggle_fullscreen)
         for n in range(self.tabs.count()):
             sc(f"Ctrl+{(n + 1) % 10}", lambda n=n: self._open_app(self.tabs.widget(n)))
         sc("Ctrl+Tab", lambda: self._cycle_tab(1), app_only=True)
