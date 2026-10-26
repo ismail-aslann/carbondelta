@@ -109,9 +109,11 @@ CO2-eşd, <i>parametrik mod</i> açıksa her saat sabit yük kullanılır; ekran
 kaydeder; <b>CSV</b> aynı verileri tam hassasiyetle dışa aktarır.</p>"""),
 
     ("plan", "Tesis Planı", """
-<p>Seçilen günde <b>her kaydırılabilir makine için ayrı ayrı</b> en temiz hedef pencereyi bulur. Üstteki standart
-saat, uzunluk ve oran bütün satırlara uygulanır; tablodan her makinenin kendi standart saatini ve uzunluğunu
-değiştirebilir, <i>Dahil</i> kutusuyla makineyi plandan çıkarabilirsiniz. Kaydırılamayan ve o gün verisi olmayan
+<p>Seçilen günde <b>her kaydırılabilir makine için ayrı ayrı</b> en temiz hedef pencereyi bulur.
+<b>Standart: Otomatik</b> (varsayılan) seçiliyken her makinenin o gün en çok emisyon ürettiği pencere standart
+kabul edilir. <b>Elle</b> seçilirse üstteki saat bütün satırlara uygulanır ve tablodan her makinenin kendi standart
+saati ve uzunluğu değiştirilebilir. <i>Dahil</i> kutusuyla makine plandan çıkarılır. Plan değişiklik önermezse
+(ör. standart pencerede makine çalışmıyorsa ya da daha temiz saat yoksa) ekran nedenini yazar. Kaydırılamayan ve o gün verisi olmayan
 makineler nedeniyle birlikte listelenir.</p>
 <p>Özet kutularında tesisin toplam emisyon değişimi, kaydırılan yükteki yüzde, tesisin günlük emisyonundaki pay ve
 <b>tepe yük</b> (plan öncesi → sonrası) görünür. Bütün yükleri en temiz saate toplamak tesisin saatlik tepe yükünü

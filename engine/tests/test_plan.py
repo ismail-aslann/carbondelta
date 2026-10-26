@@ -66,3 +66,21 @@ def test_plan_csv(tmp_path):
     export_plan_csv(path, p, {5})
     text = path.read_text(encoding="utf-8-sig")
     assert "Tepe yük sonra" in text and "Kompresör" in text
+
+
+def test_auto_standard_window_is_heaviest():
+    p = plan.facility_plan("2025-09-01", plan.default_settings(None, 3, 1.0))
+    ci = data.ci_24("2025-09-01")
+    for r in p.rows:
+        if r.status in (plan.PLANNED, plan.KEEP):
+            load = data.load_24(r.asset_id, "2025-09-01")
+            emissions = [sum(load[s + i] * ci[s + i] for i in range(3)) for s in range(22)]
+            assert r.s == max(range(22), key=lambda s: (emissions[s], -s))
+    assert p.planned_count >= 3 and p.shifted_kwh > 50
+
+
+def test_reason_counts_when_nothing_moves():
+    st = plan.default_settings(3, 3, 1.0)
+    p = plan.facility_plan(DAY, st, restricted=set(range(24)) - {3, 4, 5})   # tek geçerli hedef standardın kendisi
+    assert p.planned_count == 0
+    assert sum(plan.reason_counts(p).values()) >= 3

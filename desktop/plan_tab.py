@@ -14,7 +14,7 @@ from matplotlib.ticker import FuncFormatter  # noqa: E402
 from PySide6.QtCore import QDate, Qt, QTimer, Signal  # noqa: E402
 from PySide6.QtGui import QColor  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
-    QAbstractItemView, QCheckBox, QDoubleSpinBox, QFileDialog, QHBoxLayout, QHeaderView, QLabel, QMessageBox,
+    QAbstractItemView, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QHBoxLayout, QHeaderView, QLabel, QMessageBox,
     QPushButton, QSlider, QSpinBox, QVBoxLayout, QWidget,
 )
 
@@ -61,6 +61,12 @@ class _LoadChart(FigureCanvasQTAgg):
             if p.peak_limit:
                 ax.axhline(p.peak_limit, color="#d03c3c", linewidth=1, linestyle="--")
                 ax.text(23.6, p.peak_limit, " sınır", fontsize=7.5, color="#d03c3c", va="bottom", ha="right")
+            moved = sum(max(0.0, b - a) for b, a in zip(p.before, p.after))
+            msg = (f"Taşınan enerji: {fmt.num(moved, 1)} kWh" if moved > 1e-9
+                   else "Plan değişiklik önermedi")
+            ax.text(0.01, 0.97, msg, transform=ax.transAxes, fontsize=8, va="top",
+                    color="#16785c" if moved > 1e-9 else "#9a6412",
+                    bbox={"boxstyle": "round,pad=0.3", "fc": "white", "ec": "#e1e6ec"})
             ax2.plot(hours, p.ci, color="#1f4e79", linewidth=1.6, marker="o", markersize=2.5, label="Karbon yoğunluğu")
             ax2.yaxis.set_label_position("right")
             ax2.yaxis.tick_right()
@@ -138,8 +144,15 @@ class PlanTab(QWidget):
         self.limit.setSpecialValueText("sınır yok")
         self.limit.setToolTip("Tesisin herhangi bir saatteki toplam yükü bu değeri aşmasın (0 = sınır yok). "
                               "Sınır aşılıyorsa planlayıcı makineyi sınırı aşmayan en temiz pencereye alır.")
-        for label, w in (("Gün", self.date), ("Standart", self.s), ("Uzunluk", self.L)):
-            row.addWidget(theme.muted(label))
+        self.mode = QComboBox()
+        self.mode.addItem("Otomatik", "auto")
+        self.mode.addItem("Elle", "manual")
+        self.mode.setToolTip("Otomatik: her makine için o gün en çok emisyon ürettiği pencere standart kabul edilir. "
+                             "Elle: aşağıdaki saat (satır başına değiştirilebilir) kullanılır.")
+        self.mode.currentIndexChanged.connect(self._on_mode)
+        for label, w in (("Gün", self.date), ("Standart", self.mode), ("", self.s), ("Uzunluk", self.L)):
+            if label:
+                row.addWidget(theme.muted(label))
             row.addWidget(w)
         row.addWidget(theme.muted("Oran"))
         row.addWidget(self.p)
@@ -189,7 +202,7 @@ class PlanTab(QWidget):
         self.table.cellDoubleClicked.connect(lambda r, _c: self._apply_row(r))
         tl.addWidget(self.table, 1)
         btns = QHBoxLayout()
-        btns.addWidget(theme.muted("Satır başına standart saat ve uzunluk değiştirilebilir; çift tıklama o makineyi "
+        btns.addWidget(theme.muted("Elle modunda satır başına standart saat ve uzunluk değiştirilebilir; çift tıklama o makineyi "
                                    "Senaryo'da açar."), 1)
         self.apply_button = QPushButton("Seçili makineyi senaryoya aç")
         self.apply_button.setObjectName("primary")
@@ -206,8 +219,20 @@ class PlanTab(QWidget):
         root.addLayout(body, 1)
 
         self.reload_machines()
+        self._on_mode()
 
     # ---------------------------------------------------------- girdiler
+    @property
+    def auto(self) -> bool:
+        return self.mode.currentData() == "auto"
+
+    def _on_mode(self, *_a) -> None:
+        self.s.setEnabled(not self.auto)
+        for a, (chk, ws, _wl) in self._row_widgets.items():
+            ws.setEnabled(not self.auto and data.machine(a)["shiftable"])
+        if not self.auto and not self._loading:
+            self._on_global()
+        self._schedule()
     def reload_machines(self) -> None:
         self._loading = True
         machines = data.machines()
@@ -229,7 +254,7 @@ class PlanTab(QWidget):
             s = self._hour_spin_cls()
             s.setRange(0, 23)
             s.setValue(self.s.value())
-            s.setEnabled(m["shiftable"])
+            s.setEnabled(m["shiftable"] and self.mode.currentData() == "manual")
             s.valueChanged.connect(self._schedule)
             L = QSpinBox()
             L.setRange(1, 12)
@@ -274,7 +299,7 @@ class PlanTab(QWidget):
 
     def settings(self) -> dict[str, plan.MachineSetting]:
         p = self.p.value() / 100
-        return {a: plan.MachineSetting(ws.value(), wl.value(), p, chk.isChecked())
+        return {a: plan.MachineSetting(None if self.auto else ws.value(), wl.value(), p, chk.isChecked())
                 for a, (chk, ws, wl) in self._row_widgets.items() if data.machine(a)["shiftable"]}
 
     # ------------------------------------------------------------- hesap
@@ -317,9 +342,21 @@ class PlanTab(QWidget):
                          f"yükü {fmt.num(p.peak_before, 1)}'den {fmt.num(p.peak_after, 1)} kWh'e çıkıyor; sözleşme "
                          "gücü veya trafo sınırı varsa <i>Tepe sınırı</i> girin.</span>")
         else:
-            text = f"<b>{fmt.date(p.date)}</b> için daha temiz saate alınabilecek makine yok."
+            reasons = plan.reason_counts(p)
+            why = "; ".join(f"{n} makinede: {k.lower()}" for k, n in reasons.items()) or "plana dahil makine yok"
+            hint = ("Standart pencereyi makinelerin çalıştığı saatlere çekin ya da <i>Otomatik</i>'i seçin."
+                    if not self.auto else "Bu gün için daha temiz bir saat bulunmuyor.")
+            text = (f"<b>{fmt.date(p.date)}</b> için plan değişiklik önermedi, iki çubuk bu yüzden aynı ({why}). "
+                    f"<span style='color:{theme.WARN}'>{hint}</span>")
         self.summary.setText(text)
 
+        if self.auto:
+            for a, (_chk, ws, _wl) in self._row_widgets.items():
+                rr = next(x for x in p.rows if x.asset_id == a)
+                if rr.status in (plan.PLANNED, plan.KEEP):
+                    ws.blockSignals(True)
+                    ws.setValue(rr.s)
+                    ws.blockSignals(False)
         for n, a in enumerate(self._ids):
             r = next(x for x in p.rows if x.asset_id == a)
             res = r.result

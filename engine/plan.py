@@ -27,10 +27,20 @@ NO_LOAD = "no_load"          # standart pencerede yük yok
 
 @dataclass
 class MachineSetting:
-    s: int
+    s: int | None          # None: otomatik (makinenin o gün en çok emisyon ürettiği pencere)
     L: int
     p: float = 1.0
     include: bool = True
+
+
+def heaviest_window(load: list[float], ci: list[float], L: int, p: float = 1.0) -> int | None:
+    """O gün en yüksek emisyonlu L saatlik pencerenin başlangıcı (eşitlikte küçük s); yük yoksa None."""
+    best, best_b = None, 0.0
+    for s in range(0, HOURS - L + 1):
+        b = sum(p * load[s + i] * ci[s + i] for i in range(L))
+        if b > best_b + 1e-12:
+            best, best_b = s, b
+    return best
 
 
 @dataclass
@@ -159,15 +169,20 @@ def facility_plan(date: str, settings: dict[str, MachineSetting], restricted: se
             row.status, row.note = EXCLUDED, "Plana dahil edilmedi"
             continue
         row.s, row.L, row.p = st.s, st.L, st.p
-        if st.s + st.L > HOURS:
+        if st.s is None:
+            row.s = heaviest_window(load, ci, st.L, st.p)
+            if row.s is None:
+                row.s, row.status, row.note = 0, NO_LOAD, "Bu gün makinede yük yok"
+                continue
+        if row.s + row.L > HOURS:
             row.status, row.note = KEEP, "Pencere gün dışına taşıyor"
             continue
-        cands = sorted(scan_windows(load, ci, st.s, st.L, st.p, set(restricted), True),
+        cands = sorted(scan_windows(load, ci, row.s, row.L, row.p, set(restricted), True),
                        key=lambda tr: (tr[1].scenario_kg, tr[0]))
         if not cands:
             row.status, row.note = NO_LOAD, "Standart pencerede yük yok veya tüm hedefler kısıtlı"
             continue
-        base = simulate(load, ci, st.s, st.L, st.s, st.p, set(), True)
+        base = simulate(load, ci, row.s, row.L, row.s, row.p, set(), True)
         potential = base.baseline_kg - cands[0][1].scenario_kg
         candidates.append((potential, row, load, cands, base))
 
@@ -198,5 +213,14 @@ def facility_plan(date: str, settings: dict[str, MachineSetting], restricted: se
     return plan
 
 
-def default_settings(s: int, L: int, p: float) -> dict[str, MachineSetting]:
+def default_settings(s: int | None, L: int, p: float) -> dict[str, MachineSetting]:
     return {m["id"]: MachineSetting(s, L, p) for m in data.machines() if m["shiftable"]}
+
+
+def reason_counts(p: FacilityPlan) -> dict[str, int]:
+    """Kaydırılmayan makinelerin nedenlerine göre sayısı (ekrandaki açıklama için)."""
+    out: dict[str, int] = {}
+    for r in p.rows:
+        if r.status in (KEEP, NO_LOAD):
+            out[r.note] = out.get(r.note, 0) + 1
+    return out
