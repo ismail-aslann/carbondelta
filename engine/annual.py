@@ -3,6 +3,10 @@
 Formül değişmez: her gün simulate() ile hesaplanır, yalnızca B, S ve günlük emisyon toplanır.
 Yıllık değişim = (ΣS − ΣB) / ΣB × 100; yıllık günlük etki = (ΣS − ΣB) / Σ günlük emisyon × 100.
 Durumu "ok" olmayan günler (yük yok, kısıtlı vb.) toplama girmez ve ayrıca sayılır.
+
+Yenilenebilir pay: kaydırılan enerjinin, tüketildiği saatteki şebeke yenilenebilir payıyla ağırlıklı
+ortalaması (konum bazlı gösterge; standart ve hedef pencere için ayrı).
+Tesis geneli (ALL): aynı kaydırma tüm kaydırılabilir makinelere uygulanır, sonuçlar toplanır.
 """
 from __future__ import annotations
 
@@ -10,6 +14,9 @@ from dataclasses import dataclass, field
 
 from engine import data
 from engine.core import HOURS, OK, simulate
+
+
+ALL = "__tesis__"   # tesis geneli: tüm kaydırılabilir makineler
 
 
 @dataclass
@@ -48,6 +55,21 @@ class AnnualResult:
     best_day: tuple[str, float] | None = None    # (tarih, değişim %) en çok düşüren gün
     worst_day: tuple[str, float] | None = None
     months: list[MonthTotal] = field(default_factory=lambda: [MonthTotal(m) for m in range(1, 13)])
+    ren_source_kwh: float = 0.0         # kaydırılan enerjinin standart pencerede yenilenebilir karşılığı
+    ren_target_kwh: float = 0.0         # aynı enerjinin hedef pencerede yenilenebilir karşılığı
+    parts: list[AnnualResult] = field(default_factory=list)   # tesis genelinde makine sonuçları
+
+    @property
+    def is_facility(self) -> bool:
+        return self.asset_id == ALL
+
+    @property
+    def ren_source_pct(self) -> float | None:
+        return self.ren_source_kwh / self.shifted_kwh * 100 if self.shifted_kwh > 0 else None
+
+    @property
+    def ren_target_pct(self) -> float | None:
+        return self.ren_target_kwh / self.shifted_kwh * 100 if self.shifted_kwh > 0 else None
 
     @property
     def delta_kg(self) -> float:
@@ -62,14 +84,24 @@ class AnnualResult:
         return self.delta_kg / self.daily_kg * 100 if self.daily_kg > 0 else None
 
 
+def facility_machines() -> list[str]:
+    return [m["id"] for m in data.machines() if m["shiftable"]]
+
+
 def years_for(asset_id: str) -> list[int]:
-    return sorted({int(d[:4]) for d in data.days_for(asset_id)})
+    ids = facility_machines() if asset_id == ALL else [asset_id]
+    return sorted({int(d[:4]) for a in ids for d in data.days_for(a)})
 
 
-def year_series(asset_id: str, year: int, kind: str) -> list[tuple[str, list[float], list[float]]]:
+def year_series(asset_id: str, year: int, kind: str, parametric_kwh: float | None = None) -> list[tuple]:
+    """(tarih, yük, CI, yenilenebilir %) — parametrik modda yük her saat sabit kWh."""
     prefix = f"{year:04d}-"
-    return [(d, *data.scenario_series(asset_id, d, kind))
-            for d in data.days_for(asset_id) if d.startswith(prefix)]
+    out = []
+    for d in data.days_for(asset_id):
+        if d.startswith(prefix):
+            load, ci = data.scenario_series(asset_id, d, kind, parametric_kwh)
+            out.append((d, load, ci, [data.mix_at(d, h)["renewable_pct"] for h in range(HOURS)]))
+    return out
 
 
 def annual_impact(asset_id: str, year: int, s: int, L: int, t: int, p: float,
@@ -78,7 +110,7 @@ def annual_impact(asset_id: str, year: int, s: int, L: int, t: int, p: float,
     shiftable = data.machine(asset_id)["shiftable"]
     days = series if series is not None else year_series(asset_id, year, kind)
     out = AnnualResult(asset_id, year, s, L, t, p, days_total=len(days))
-    for date, load, ci in days:
+    for date, load, ci, ren in days:
         r = simulate(load, ci, s, L, t, p, set(restricted), shiftable)
         out.status_counts[r.status] = out.status_counts.get(r.status, 0) + 1
         if r.status != OK:
@@ -88,6 +120,10 @@ def annual_impact(asset_id: str, year: int, s: int, L: int, t: int, p: float,
         out.baseline_kg += r.baseline_kg
         out.scenario_kg += r.scenario_kg
         out.daily_kg += r.daily_kg
+        for i in range(L):
+            e = p * load[s + i]
+            out.ren_source_kwh += e * ren[s + i] / 100
+            out.ren_target_kwh += e * ren[t + i] / 100
         m = out.months[int(date[5:7]) - 1]
         m.days += 1
         m.baseline_kg += r.baseline_kg
@@ -114,3 +150,30 @@ def best_annual_target(asset_id: str, year: int, s: int, L: int, p: float,
                for t in range(0, HOURS - L + 1)]
     valid = [r for r in results if r.days_ok > 0]
     return sorted(valid, key=lambda r: (r.scenario_kg, r.t))
+
+
+def facility_impact(year: int, s: int, L: int, t: int, p: float, restricted: set[int] = frozenset(),
+                    kind: str = "tCO2", series_by_asset: dict | None = None,
+                    parametric_kwh: float | None = None) -> AnnualResult:
+    """Tesis geneli: aynı kaydırma her kaydırılabilir makineye; gün sayıları makine-gün olarak toplanır."""
+    out = AnnualResult(ALL, year, s, L, t, p)
+    for a in facility_machines():
+        series = (series_by_asset or {}).get(a)
+        if series is None:
+            series = year_series(a, year, kind, parametric_kwh)
+        if not series:
+            continue
+        r = annual_impact(a, year, s, L, t, p, restricted, kind, series)
+        out.parts.append(r)
+        out.days_total += r.days_total
+        out.days_ok += r.days_ok
+        for k, v in r.status_counts.items():
+            out.status_counts[k] = out.status_counts.get(k, 0) + v
+        for name in ("shifted_kwh", "baseline_kg", "scenario_kg", "daily_kg", "ren_source_kwh", "ren_target_kwh",
+                     "better_days", "worse_days"):
+            setattr(out, name, getattr(out, name) + getattr(r, name))
+        for mo, mr in zip(out.months, r.months):
+            mo.days += mr.days
+            mo.baseline_kg += mr.baseline_kg
+            mo.scenario_kg += mr.scenario_kg
+    return out

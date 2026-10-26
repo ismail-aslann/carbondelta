@@ -75,3 +75,19 @@ def season_profile(source_hours: list[int], target_hours: list[int],
         "worst_month": worst["month"],
         "worst_month_diff_pct": worst["diff_pct"],
     }
+
+
+def shifted_renewable(date: str, load: list[float], s: int, L: int, t: int, p: float) -> tuple[float, float] | None:
+    """Kaydırılan enerjinin, tüketildiği saatteki şebeke yenilenebilir payıyla ağırlıklı ortalaması (%).
+
+    (standart pencere, hedef pencere); yük yoksa veya pencere gün dışına taşıyorsa None.
+    """
+    if L < 1 or s < 0 or t < 0 or s + L > 24 or t + L > 24:
+        return None
+    ren = [data.mix_at(date, h)["renewable_pct"] for h in range(24)]
+    e = [p * load[s + i] for i in range(L)]
+    total = sum(e)
+    if total <= 0:
+        return None
+    return (sum(e[i] * ren[s + i] for i in range(L)) / total,
+            sum(e[i] * ren[t + i] for i in range(L)) / total)

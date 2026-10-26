@@ -73,7 +73,10 @@ günlük toplam emisyonuna etkisi yazar. <b>Senaryoyu kaydet</b> ({_k('Ctrl', 'S
 </ul>
 <p><b>Neden oranı değiştirince yüzde değişmiyor?</b> Ana yüzde, taşınan enerjinin <i>kendi</i> emisyonundaki
 oransal değişimdir; oran yarıya inince hem standart hem seçilen emisyon yarıya iner, oran aynı kalır.
-Oranın etkisi kg değerlerinde ve <b>günlük etki</b>de görünür.</p>"""),
+Oranın etkisi kg değerlerinde ve <b>günlük etki</b>de görünür.</p>
+<p><b>Yenilenebilir payı:</b> Sonuç kartındaki bu satır, kaydırılan enerjinin tüketildiği saatlerde şebekedeki
+yenilenebilir (rüzgâr, güneş, hidro, jeotermal, biyokütle) üretim payını gösterir: standart pencere → seçilen
+pencere. Yeşilse kaydırma, enerjiyi daha temiz kaynakların ağırlıklı olduğu saatlere taşıyor demektir.</p>"""),
 
     ("best", "En Temiz Saat", f"""
 <p>Makine, gün, standart başlangıç, uzunluk ve oranı seçin; günün tüm geçerli hedef pencereleri emisyona göre
@@ -90,7 +93,16 @@ olduğu günler toplama girmez ve <i>Hesaba giren gün</i> kutusunda görünür.
 kapsamıyorsa sonuç yalnızca verisi olan günlerin toplamıdır; yıla tamamlama yapılmaz.</p>
 <p>Ekran ayrıca yıl boyunca sabit tutulabilecek <b>en temiz hedef saati</b> gösterir. <i>Bu hedefi dene</i>
 onu seçer, <i>Senaryoya uygula</i> saatleri Senaryo sekmesine aktarır. Aylık tablo ve grafik mevsim
-farklarını gösterir; <i>CSV olarak dışa aktar</i> özet ve aylık dökümü kaydeder.</p>"""),
+farklarını gösterir.</p>
+<p><b>Kapsam:</b> Tek bir makine ya da <b>Tesis geneli</b> seçilebilir. Tesis genelinde aynı kaydırma bütün
+kaydırılabilir makinelere uygulanır; toplam emisyon değişimi, makinelerin katkıları ve aylık toplam gösterilir
+(gün sayısı makine-gün olarak toplanır).</p>
+<p><b>Yenilenebilir payı</b> kutusu, kaydırılan enerjinin yıl boyunca şebekedeki yenilenebilir üretimden karşılanan
+payını (enerji ağırlıklı) standart ve hedef pencere için karşılaştırır. Senaryoda <i>tCO2-eşd</i> seçiliyse birimler
+CO2-eşd, <i>parametrik mod</i> açıksa her saat sabit yük kullanılır; ekranın üstündeki not bunu belirtir.</p>
+<p><b>Delti yorumlasın</b> yıllık sonucu sade bir dille açıklar (internet yoksa şablon metin). <b>PDF rapor</b>
+özet göstergeleri, Delti yorumunu, aylık grafik ve tabloyu, makine katkılarını ve yöntem notlarını içeren bir rapor
+kaydeder; <b>CSV</b> aynı verileri tam hassasiyetle dışa aktarır.</p>"""),
 
     ("delti", "Delti'ye Sor", f"""
 <p><b>Delti</b>, CarbonDelta'nın yapay zekâ (AI) yardımcısıdır. Hesap yapmaz; motorun hesapladığı sonuçları

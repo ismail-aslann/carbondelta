@@ -34,6 +34,7 @@ from desktop.tabs import CalcTab, HistoryTab, SourcesTab
 from engine import data
 from engine.best_window import best_window
 from engine.core import Result, simulate
+from engine.insights import shifted_renewable
 from engine.appinfo import APP_NAME
 
 APP_TITLE = f"{APP_NAME} — Emisyon Potansiyeli Karar Destek"
@@ -199,6 +200,8 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.best_tab, "En Temiz Saat")
         self.annual_tab = AnnualTab(HourSpinBox)
         self.annual_tab.apply_requested.connect(self.apply_best_choice)
+        self.annual_tab.explain_requested.connect(lambda req: self.ai.submit(req, ("annual", req.cache_key())))
+        self.annual_tab.footer_changed.connect(self._annual_footer)
         self.tabs.addTab(self.annual_tab, "Yıllık Etki")
         self.nl_tab = NLTab()
         self.nl_tab.submit.connect(self.submit_nl_page)
@@ -488,6 +491,7 @@ class MainWindow(QMainWindow):
             ("scenario", "Seçilen pencere emisyonu"),
             ("shifted", "Kaydırılan enerji"),
             ("daily", "Günlük etki"),
+            ("renewable", "Yenilenebilir payı (kaydırılan enerji)"),
         ]
         for i, (key, title) in enumerate(rows):
             t = theme.muted(title)
@@ -690,14 +694,21 @@ class MainWindow(QMainWindow):
 
         self.chart.update_chart(ci, load, i.s, i.L, i.t, set(i.restricted), r.status,
                                 r.delta_pct, CI_LABELS[i.ci_kind])
-        self.footer.setText(data.source_label(i.asset_id, i.date))
-        real = data.is_real(i.asset_id)
-        self.footer.setStyleSheet(f"color: {theme.PRIMARY_DARK if real else MUTED}; padding: 3px; font-size: 8.5pt;"
-                                  + (" font-weight: 600;" if real else ""))
+        if self.tabs.currentWidget() is not self.annual_tab:
+            self._set_footer(data.source_label(i.asset_id, i.date), data.is_real(i.asset_id))
         self._update_card(self.current)
         self.calc_tab.update_computation(self.current)
         if auto_ai:
             self._schedule_auto_ai()
+
+    def _set_footer(self, text: str, real: bool) -> None:
+        self.footer.setText(text)
+        self.footer.setStyleSheet(f"color: {theme.PRIMARY_DARK if real else MUTED}; padding: 3px; font-size: 8.5pt;"
+                                  + (" font-weight: 600;" if real else ""))
+
+    def _annual_footer(self, text: str, real: bool) -> None:
+        if self.tabs.currentWidget() is self.annual_tab and text:
+            self._set_footer(text, real)
 
     def save_current(self) -> int | None:
         if self.current is None:
@@ -757,6 +768,17 @@ class MainWindow(QMainWindow):
         self.detail_labels["scenario"].setText(f"{fmt.num(r.scenario_kg)} {unit}" if computed else "—")
         self.detail_labels["shifted"].setText(f"{fmt.num(r.shifted_kwh)} kWh" if computed else "—")
         self.detail_labels["daily"].setText(fmt.pct(r.daily_delta_pct))
+        i = c.inputs
+        rs = shifted_renewable(i.date, c.load, i.s, i.L, i.t, i.p) if r.status in ("ok", "same_window") else None
+        lab = self.detail_labels["renewable"]
+        if rs is None:
+            lab.setText("—")
+            lab.setStyleSheet("font-weight: 600;")
+        else:
+            lab.setText(f"%{fmt.num(rs[0], 1)} → %{fmt.num(rs[1], 1)}")
+            lab.setStyleSheet(f"font-weight: 600; color: {GOOD if rs[1] >= rs[0] else BAD};")
+        lab.setToolTip("Kaydırılan enerjinin, tüketildiği saatlerde şebekedeki yenilenebilir (rüzgâr, güneş, hidro, "
+                       "jeotermal, biyokütle) üretim payı: standart pencere → seçilen pencere.")
 
     def apply_best_window(self) -> None:
         i = self.inputs()
@@ -907,7 +929,11 @@ class MainWindow(QMainWindow):
             self.best_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.p, i.restricted)
         elif self.tabs.currentWidget() is self.annual_tab:
             i = self.inputs()
-            self.annual_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.t, i.p, i.restricted, i.ci_kind)
+            self.annual_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.t, i.p, i.restricted, i.ci_kind,
+                                        i.param_kwh if i.parametric else None)
+        if self.tabs.currentWidget() is not self.annual_tab and self.current is not None:
+            i = self.current.inputs
+            self._set_footer(data.source_label(i.asset_id, i.date), data.is_real(i.asset_id))
         QTimer.singleShot(0, self._focus_current_tab)
 
     def _focus_current_tab(self) -> None:
@@ -1168,6 +1194,8 @@ class MainWindow(QMainWindow):
             self._render_ai()
         elif kind == "history":
             self.history_tab.show_summary(reply.text, reply.source)
+        elif kind == "annual":
+            self.annual_tab.show_ai(reply.text, reply.source, tag[1])
         elif kind == "nl":
             self._apply_nl(tag[1], reply)
         elif kind == "nlpage":

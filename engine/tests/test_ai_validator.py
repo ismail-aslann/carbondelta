@@ -75,7 +75,7 @@ def test_render_keeps_unknown_braces():
 
 def test_prompts_have_all_functions():
     ids = {f["id"] for f in prompts()["functions"]}
-    assert len(ids) == 15
+    assert len(ids) == 16  # talimattaki 15 işlev + yıllık etki yorumu
     for f in prompts()["functions"]:
         assert {"id", "title", "system", "user_template", "fallback_template"} <= f.keys()
 
