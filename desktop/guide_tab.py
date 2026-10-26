@@ -76,7 +76,11 @@ oransal değişimdir; oran yarıya inince hem standart hem seçilen emisyon yar�
 Oranın etkisi kg değerlerinde ve <b>günlük etki</b>de görünür.</p>
 <p><b>Yenilenebilir payı:</b> Sonuç kartındaki bu satır, kaydırılan enerjinin tüketildiği saatlerde şebekedeki
 yenilenebilir (rüzgâr, güneş, hidro, jeotermal, biyokütle) üretim payını gösterir: standart pencere → seçilen
-pencere. Yeşilse kaydırma, enerjiyi daha temiz kaynakların ağırlıklı olduğu saatlere taşıyor demektir.</p>"""),
+pencere. Yeşilse kaydırma, enerjiyi daha temiz kaynakların ağırlıklı olduğu saatlere taşıyor demektir.</p>
+<p><b>Fosil marjinal varsayımla:</b> Ana sonuç şebekenin saatlik <i>ortalama</i> yoğunluğuyla hesaplanır. Oysa bir yük
+kaydırıldığında üretimini değiştiren santral çoğunlukla fosil bir santraldir. Bu satır, kaydırılan yükü o saatlerde
+yalnızca fosil santrallerin karşıladığı varsayımıyla aynı hesabı gösterir (CI_fosil = CI / fosil payı). Genellikle
+daha küçük bir azalma çıkar; gerçek etki büyük olasılıkla iki değer arasındadır.</p>"""),
 
     ("best", "En Temiz Saat", f"""
 <p>Makine, gün, standart başlangıç, uzunluk ve oranı seçin; günün tüm geçerli hedef pencereleri emisyona göre
@@ -103,6 +107,20 @@ CO2-eşd, <i>parametrik mod</i> açıksa her saat sabit yük kullanılır; ekran
 <p><b>Delti yorumlasın</b> yıllık sonucu sade bir dille açıklar (internet yoksa şablon metin). <b>PDF rapor</b>
 özet göstergeleri, Delti yorumunu, aylık grafik ve tabloyu, makine katkılarını ve yöntem notlarını içeren bir rapor
 kaydeder; <b>CSV</b> aynı verileri tam hassasiyetle dışa aktarır.</p>"""),
+
+    ("plan", "Tesis Planı", """
+<p>Seçilen günde <b>her kaydırılabilir makine için ayrı ayrı</b> en temiz hedef pencereyi bulur.
+<b>Standart: Otomatik</b> (varsayılan) seçiliyken her makinenin o gün en çok emisyon ürettiği pencere standart
+kabul edilir. <b>Elle</b> seçilirse üstteki saat bütün satırlara uygulanır ve tablodan her makinenin kendi standart
+saati ve uzunluğu değiştirilebilir. <i>Dahil</i> kutusuyla makine plandan çıkarılır. Plan değişiklik önermezse
+(ör. standart pencerede makine çalışmıyorsa ya da daha temiz saat yoksa) ekran nedenini yazar. Kaydırılamayan ve o gün verisi olmayan
+makineler nedeniyle birlikte listelenir.</p>
+<p>Özet kutularında tesisin toplam emisyon değişimi, kaydırılan yükteki yüzde, tesisin günlük emisyonundaki pay ve
+<b>tepe yük</b> (plan öncesi → sonrası) görünür. Bütün yükleri en temiz saate toplamak tesisin saatlik tepe yükünü
+artırabilir. Sözleşme gücü ya da trafo sınırı varsa <b>Tepe sınırı</b> girin: planlayıcı makineleri azaltım
+potansiyeline göre sırayla yerleştirir, sınırı aşan pencereyi atlayıp sınırı aşmayan en temiz pencereyi seçer.</p>
+<p>Grafik plan öncesi/sonrası tesis yükünü ve şebeke karbon yoğunluğunu gösterir. Bir satıra çift tıklamak o
+makineyi Senaryo'da açar; <i>CSV</i> planı kaydeder.</p>"""),
 
     ("delti", "Delti'ye Sor", f"""
 <p><b>Delti</b>, CarbonDelta'nın yapay zekâ (AI) yardımcısıdır. Hesap yapmaz; motorun hesapladığı sonuçları
@@ -185,7 +203,7 @@ değişikliği <i>shared/FORMUL.md</i> sürüm süreciyle geliştiriciler taraf�
 <tr><td>{_k('F1')}</td><td>Kullanma kılavuzu</td></tr>
 <tr><td>{_k('F11')}</td><td>Tam ekran (sunum modu) aç/kapat</td></tr>
 <tr><td>{_k('Ctrl', ',')}</td><td>Delti ayarları (API anahtarı)</td></tr>
-<tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '0')}</td><td>Senaryo · En Temiz Saat · Yıllık Etki · Delti'ye Sor · Hesabı Göster · Geçmiş · Veri · Kılavuz · Kaynaklar · İletişim</td></tr>
+<tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '0')}</td><td>Senaryo · En Temiz Saat · Yıllık Etki · Tesis Planı · Delti'ye Sor · Hesabı Göster · Geçmiş · Veri · Kılavuz · Kaynaklar (İletişim'e Ctrl+Tab ile geçilir)</td></tr>
 <tr><td>{_k('Ctrl', 'Tab')} / {_k('Ctrl', 'Shift', 'Tab')}</td><td>Sonraki / önceki sekme</td></tr>
 <tr><td>{_k('Tab')} / {_k('Shift', 'Tab')}</td><td>Alanlar arasında ileri / geri</td></tr>
 <tr><td>{_k('↑')} {_k('↓')}</td><td>Sayı ve saat değerini değiştir, listede seç, kaydırıcıyı oynat</td></tr>

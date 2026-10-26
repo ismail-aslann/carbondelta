@@ -91,3 +91,14 @@ def shifted_renewable(date: str, load: list[float], s: int, L: int, t: int, p: f
         return None
     return (sum(e[i] * ren[s + i] for i in range(L)) / total,
             sum(e[i] * ren[t + i] for i in range(L)) / total)
+
+
+def fossil_sensitivity(load: list[float], ci_fossil: list[float], s: int, L: int, t: int,
+                       p: float) -> tuple[float, float, float | None]:
+    """Aynı kaydırmanın fosil marjinal yoğunlukla emisyonu: (B_fosil, S_fosil, değişim %).
+
+    Ana sonuçla aynı pencereler ve enerji kullanılır; yalnızca saatlik yoğunluk değişir.
+    """
+    b = sum(p * load[s + i] * ci_fossil[s + i] for i in range(L))
+    sc = sum(p * load[s + i] * ci_fossil[t + i] for i in range(L))
+    return b, sc, ((sc - b) / b * 100 if b > 0 else None)

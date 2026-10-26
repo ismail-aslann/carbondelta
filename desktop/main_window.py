@@ -25,6 +25,7 @@ from desktop.resources import resource_path
 from desktop.start_screen import StartScreen
 from desktop.tools_tabs import BestWindowTab, NLTab
 from desktop.annual_tab import AnnualTab
+from desktop.plan_tab import PlanTab
 from desktop.guide_tab import GuideTab
 from desktop.data_tab import DataTab
 from desktop.contact_tab import ContactTab
@@ -34,7 +35,7 @@ from desktop.tabs import CalcTab, HistoryTab, SourcesTab
 from engine import data
 from engine.best_window import best_window
 from engine.core import Result, simulate
-from engine.insights import shifted_renewable
+from engine.insights import fossil_sensitivity, shifted_renewable
 from engine.appinfo import APP_NAME
 
 APP_TITLE = f"{APP_NAME} — Emisyon Potansiyeli Karar Destek"
@@ -201,8 +202,12 @@ class MainWindow(QMainWindow):
         self.annual_tab = AnnualTab(HourSpinBox)
         self.annual_tab.apply_requested.connect(self.apply_best_choice)
         self.annual_tab.explain_requested.connect(lambda req: self.ai.submit(req, ("annual", req.cache_key())))
-        self.annual_tab.footer_changed.connect(self._annual_footer)
+        self.annual_tab.footer_changed.connect(lambda t, r: self._tab_footer(self.annual_tab, t, r))
         self.tabs.addTab(self.annual_tab, "Yıllık Etki")
+        self.plan_tab = PlanTab(HourSpinBox)
+        self.plan_tab.apply_requested.connect(self.apply_best_choice)
+        self.plan_tab.footer_changed.connect(lambda t, r: self._tab_footer(self.plan_tab, t, r))
+        self.tabs.addTab(self.plan_tab, "Tesis Planı")
         self.nl_tab = NLTab()
         self.nl_tab.submit.connect(self.submit_nl_page)
         self.nl_tab.open_requested.connect(self.open_nl_result)
@@ -492,6 +497,7 @@ class MainWindow(QMainWindow):
             ("shifted", "Kaydırılan enerji"),
             ("daily", "Günlük etki"),
             ("renewable", "Yenilenebilir payı (kaydırılan enerji)"),
+            ("fossil", "Fosil marjinal varsayımla"),
         ]
         for i, (key, title) in enumerate(rows):
             t = theme.muted(title)
@@ -567,7 +573,7 @@ class MainWindow(QMainWindow):
 
         self.ai_text = QTextBrowser()
         self.ai_text.setOpenLinks(False)
-        self.ai_text.setMinimumHeight(100)
+        self.ai_text.setMinimumHeight(80)
         lay.addWidget(self.ai_text, 1)
         lay.addLayout(actions)
         return card
@@ -694,7 +700,7 @@ class MainWindow(QMainWindow):
 
         self.chart.update_chart(ci, load, i.s, i.L, i.t, set(i.restricted), r.status,
                                 r.delta_pct, CI_LABELS[i.ci_kind])
-        if self.tabs.currentWidget() is not self.annual_tab:
+        if self.tabs.currentWidget() not in (self.annual_tab, self.plan_tab):
             self._set_footer(data.source_label(i.asset_id, i.date), data.is_real(i.asset_id))
         self._update_card(self.current)
         self.calc_tab.update_computation(self.current)
@@ -706,8 +712,9 @@ class MainWindow(QMainWindow):
         self.footer.setStyleSheet(f"color: {theme.PRIMARY_DARK if real else MUTED}; padding: 3px; font-size: 8.5pt;"
                                   + (" font-weight: 600;" if real else ""))
 
-    def _annual_footer(self, text: str, real: bool) -> None:
-        if self.tabs.currentWidget() is self.annual_tab and text:
+    def _tab_footer(self, tab: QWidget, text: str, real: bool) -> None:
+        """Yıllık Etki / Tesis Planı kendi kapsamlarının kaynak etiketini gösterir (yalnızca açıkken)."""
+        if self.tabs.currentWidget() is tab and text:
             self._set_footer(text, real)
 
     def save_current(self) -> int | None:
@@ -779,6 +786,15 @@ class MainWindow(QMainWindow):
             lab.setStyleSheet(f"font-weight: 600; color: {GOOD if rs[1] >= rs[0] else BAD};")
         lab.setToolTip("Kaydırılan enerjinin, tüketildiği saatlerde şebekedeki yenilenebilir (rüzgâr, güneş, hidro, "
                        "jeotermal, biyokütle) üretim payı: standart pencere → seçilen pencere.")
+        fl = self.detail_labels["fossil"]
+        fp = None
+        if r.status == "ok":
+            fp = fossil_sensitivity(c.load, data.ci_fossil_24(i.date, i.ci_kind), i.s, i.L, i.t, i.p)[2]
+        fl.setText(fmt.pct(fp))
+        fl.setStyleSheet("font-weight: 600;" + ("" if fp is None else f" color: {GOOD if fp <= 0 else BAD};"))
+        fl.setToolTip("Duyarlılık: kaydırılan yükü o saatlerde yalnızca fosil santrallerin karşıladığı varsayımıyla "
+                      "aynı hesap (marjinal santral yaklaşımı). Ana sonuç ortalama yoğunlukla hesaplanır; bu değer "
+                      "daha temkinli bir alt sınır gösterir.")
 
     def apply_best_window(self) -> None:
         i = self.inputs()
@@ -821,6 +837,7 @@ class MainWindow(QMainWindow):
         self.reload_machines()
         self.best_tab.reload_machines()
         self.annual_tab.reload_machines()
+        self.plan_tab.reload_machines()
         self.calc_tab._fill_etkb()
         self.history_tab.refresh()
         self.refresh_start()
@@ -900,6 +917,8 @@ class MainWindow(QMainWindow):
             self._open_app(self.best_tab)
         elif key == "annual":
             self._open_app(self.annual_tab)
+        elif key == "plan":
+            self._open_app(self.plan_tab)
         elif key == "nl":
             self._open_app(self.nl_tab)
             self.nl_tab.focus_input()
@@ -931,7 +950,10 @@ class MainWindow(QMainWindow):
             i = self.inputs()
             self.annual_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.t, i.p, i.restricted, i.ci_kind,
                                         i.param_kwh if i.parametric else None)
-        if self.tabs.currentWidget() is not self.annual_tab and self.current is not None:
+        elif self.tabs.currentWidget() is self.plan_tab:
+            i = self.inputs()
+            self.plan_tab.load_inputs(i.date, i.s, i.L, i.p, i.restricted, i.ci_kind)
+        if self.tabs.currentWidget() not in (self.annual_tab, self.plan_tab) and self.current is not None:
             i = self.current.inputs
             self._set_footer(data.source_label(i.asset_id, i.date), data.is_real(i.asset_id))
         QTimer.singleShot(0, self._focus_current_tab)
@@ -947,6 +969,8 @@ class MainWindow(QMainWindow):
             self.best_tab.table.setFocus(Qt.TabFocusReason)
         elif tab is self.annual_tab:
             self.annual_tab.focus_default()
+        elif tab is self.plan_tab:
+            self.plan_tab.focus_default()
         elif tab is self.nl_tab:
             self.nl_tab.focus_input()
         elif tab is self.calc_tab:
@@ -979,7 +1003,7 @@ class MainWindow(QMainWindow):
         sc("F1", self.open_guide)
         sc("Ctrl+,", self.open_delti_settings)
         sc("F11", self.toggle_fullscreen)
-        for n in range(self.tabs.count()):
+        for n in range(min(self.tabs.count(), 10)):  # Ctrl+1 … Ctrl+0 ilk on sekme
             sc(f"Ctrl+{(n + 1) % 10}", lambda n=n: self._open_app(self.tabs.widget(n)))
         sc("Ctrl+Tab", lambda: self._cycle_tab(1), app_only=True)
         sc("Ctrl+Shift+Tab", lambda: self._cycle_tab(-1), app_only=True)

@@ -432,6 +432,8 @@ def annual_explain(r, best, kind: str = "tCO2", parametric_kwh: float | None = N
         "artan_gun": r.worse_days,
         "yenilenebilir_pay_standart_yuzde": r.ren_source_pct,
         "yenilenebilir_pay_hedef_yuzde": r.ren_target_pct,
+        "fosil_marjinal_duyarlilik_degisim_yuzde": r.fossil_delta_pct,
+        "fosil_marjinal_duyarlilik_degisim_kg": r.fossil_delta_kg,
         "aylar": [{"ay": MONTH_NAMES[m.month - 1], "degisim_kg": m.delta_kg, "degisim_yuzde": m.delta_pct}
                   for m in months],
         "en_guclu_ay": MONTH_NAMES[strongest.month - 1],

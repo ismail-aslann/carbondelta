@@ -1,14 +1,14 @@
 """Başlangıç ekranı: logo, son senaryo kartı ve bölüm listesi (koyu tema)."""
 from __future__ import annotations
 
-from PySide6.QtCore import QByteArray, QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QByteArray, QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import (
     QBrush, QColor, QFont, QIcon, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap,
     QRadialGradient,
 )
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
-    QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QVBoxLayout, QWidget,
+    QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QLayout, QVBoxLayout, QWidget,
 )
 
 from desktop import delti, fmt
@@ -38,6 +38,7 @@ _SVG = {
           '<path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
     "year": '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'
             '<path d="M7 17v-3M11 17v-5M15 17v-2"/>',
+    "plan": '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 13h3M8 16h5M14 13l1.5 1.5L18 12"/>',
     "play": None,
 }
 
@@ -46,6 +47,7 @@ ITEMS = [
     ("new", "Yeni senaryo", "Yük kaydırmayı hesapla", "chart"),
     ("best", "En temiz saat", "Otomatik öneri", "search"),
     ("annual", "Yıllık etki", "Bir yılda kaç ton CO₂", "year"),
+    ("plan", "Tesis planı", "Makine başına en temiz saat", "plan"),
     ("nl", "Delti'ye sor", "Yazarak senaryo kur", "delti"),
     ("history", "Geçmiş", "Kayıtlı senaryolar", "clock"),
     ("calc", "Hesap dökümü", "Formül ve tablolar", "doc"),
@@ -132,7 +134,12 @@ class StartScreen(QWidget):
 
         root = QVBoxLayout(self)
         root.setContentsMargins(20, 0, 20, 10)
+        # Küçük ekranlarda pencere bu ekranın tam boyuna zorlanmasın; sıkışık düzen resizeEvent'te açılır.
+        root.setSizeConstraint(QLayout.SetNoConstraint)
         root.addStretch(1)
+        self._row_layouts: list[QHBoxLayout] = []
+        self._subs: list[QLabel] = []
+        self._compact = False
 
         col = QVBoxLayout()
         col.setSpacing(0)
@@ -230,6 +237,8 @@ class StartScreen(QWidget):
             tv.addWidget(t)
             tv.addWidget(s)
             hl.addLayout(tv, 1)
+            self._row_layouts.append(hl)
+            self._subs.append(s)
             row.clicked.connect(lambda k=key: self.action.emit(k))
             row.hovered.connect(lambda i=n: self._select(i))
             ll.addWidget(row)
@@ -257,6 +266,22 @@ class StartScreen(QWidget):
         root.addLayout(foot)
 
         self._select(0)
+
+    # ----------------------------------------------------------- boyut
+    COMPACT_BELOW = 880   # bu yüksekliğin altında satır alt yazıları gizlenir
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(PANEL_WIDTH + 40, 560)
+
+    def resizeEvent(self, e) -> None:
+        compact = self.height() < self.COMPACT_BELOW
+        if compact != self._compact:
+            self._compact = compact
+            for sub in self._subs:
+                sub.setVisible(not compact)
+            for hl in self._row_layouts:
+                hl.setContentsMargins(12, 3 if compact else 6, 14, 3 if compact else 6)
+        super().resizeEvent(e)
 
     # --------------------------------------------------------------- veri
     def set_curve(self, ci: list[float]) -> None:

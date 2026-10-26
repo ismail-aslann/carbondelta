@@ -97,6 +97,18 @@ Ekran ayrıca kaydırılan enerjinin şebekedeki **yenilenebilir payını** (ene
 yıl boyu en temiz sabit hedef saati, aylık tablo/grafiği gösterir; **Delti** sonucu yorumlar (`annual_explain`),
 **PDF rapor** ve CSV dışa aktarılır. Senaryo sonuç kartında da yenilenebilir payı satırı vardır.
 
+## Tesis planı ve fosil marjinal duyarlılık
+
+**Tesis Planı** sekmesi (`engine/plan.py`, `desktop/plan_tab.py`) seçilen günde her kaydırılabilir makine için
+ayrı ayrı en temiz hedef pencereyi bulur. Standart pencere *Otomatik* (makinenin o gün en çok emisyon ürettiği
+pencere) ya da *Elle* seçilir. Tesis saatlik yükü plan öncesi/sonrası gösterilir; isteğe bağlı **tepe yük sınırı**
+verilirse planlayıcı makineleri azaltım potansiyeline göre sırayla yerleştirip sınırı aşmayan en temiz pencereyi seçer.
+
+**Fosil marjinal duyarlılık:** Ana sonuç saatlik ortalama yoğunlukla hesaplanır. Duyarlılık değeri, kaydırılan yükü
+yalnızca fosil santrallerin karşıladığı varsayımıyla aynı hesabı yapar: CI_fosil(h) = CI(h) / fosil payı(h)
+(`data.ci_fossil_24`). Senaryo kartında, yıllık etkide, PDF/CSV'de ve tesis planında gösterilir; gerçek etki
+büyük olasılıkla iki değer arasındadır.
+
 ## Veri ekleme (yeni makine, yeni yıl, yeni katsayılar)
 
 Uygulamadaki **Veri** sekmesinden (ana sayfada *Veri yönetimi*) eklenir; EXE'yi yeniden üretmek gerekmez.

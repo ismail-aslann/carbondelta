@@ -98,7 +98,7 @@ class _MonthChart(FigureCanvasQTAgg):
     def __init__(self):
         self.figure = Figure(figsize=(4, 2.4), dpi=100, layout="constrained", facecolor="white")
         super().__init__(self.figure)
-        self.setMinimumHeight(200)
+        self.setMinimumHeight(150)
         self.ax = self.figure.add_subplot(111)
 
     def update_chart(self, months: list[annual.MonthTotal], kind: str = "tCO2") -> None:
@@ -421,6 +421,10 @@ class AnnualTab(QWidget):
                 f"<b style='color:{color}'>{mass(abs(r.delta_kg), kind)} {verb}</b>. Kaydırılan enerjinin "
                 f"yenilenebilir kaynaklı payı {ren(r.ren_source_pct)} yerine {ren(r.ren_target_pct)} olur. "
                 f"{r.better_days} {loc} emisyon düştü, {r.worse_days} {loc} arttı.{skip_txt}")
+        if r.fossil_delta_pct is not None:
+            text += (f"<br><span style='color:{theme.MUTED}'>Duyarlılık: kaydırılan yükü yalnızca fosil santrallerin "
+                     f"karşıladığı varsayımıyla değişim <b>{fmt.pct(r.fossil_delta_pct)}</b> "
+                     f"({mass(r.fossil_delta_kg, kind)}); gerçek etki büyük olasılıkla bu iki değer arasındadır.</span>")
         if r.is_facility:
             parts = sorted((x for x in r.parts if x.days_ok), key=lambda x: x.delta_kg)
             text += " Katkılar: " + ", ".join(f"{html.escape(data.machine(x.asset_id)['name'])} "
@@ -575,6 +579,8 @@ def export_annual_csv(path: Path | str, r: annual.AnnualResult, restricted: set[
         w.writerow(["Toplam emisyon içindeki pay (%)", _raw(r.daily_delta_pct)])
         w.writerow(["Yenilenebilir payı, standart pencere (%)", _raw(r.ren_source_pct)])
         w.writerow(["Yenilenebilir payı, hedef pencere (%)", _raw(r.ren_target_pct)])
+        w.writerow([f"Fosil marjinal duyarlılık, değişim (kg {u})", _raw(r.fossil_delta_kg)])
+        w.writerow(["Fosil marjinal duyarlılık, değişim (%)", _raw(r.fossil_delta_pct)])
         w.writerow([])
         w.writerow([source_for(r)[0]])
 
@@ -631,6 +637,9 @@ def annual_report_html(r: annual.AnnualResult, best: annual.AnnualResult | None,
 <p>Kaydırılan {fmt.num(r.shifted_kwh, 0)} kWh enerjinin emisyonu {mass(r.baseline_kg, kind)} yerine
 {mass(r.scenario_kg, kind)} olur. Makinelerin aynı günlerdeki toplam emisyonu içindeki payı
 {fmt.pct(r.daily_delta_pct)}. {r.better_days} {unit_days}de emisyon düştü, {r.worse_days} {unit_days}de arttı.</p>
+<p><b>Duyarlılık (fosil marjinal):</b> Kaydırılan yükü yalnızca fosil santrallerin karşıladığı varsayımıyla değişim
+{fmt.pct(r.fossil_delta_pct)} ({mass(r.fossil_delta_kg, kind)}). Ana sonuç ortalama saatlik yoğunlukla
+hesaplanır; gerçek etki büyük olasılıkla bu iki değer arasındadır.</p>
 {best_txt}{ai}
 <p align="center"><img src="chart.png" width="620"></p>
 <h3>Aylık döküm</h3>

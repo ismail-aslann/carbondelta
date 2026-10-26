@@ -32,7 +32,7 @@ class ChartWidget(FigureCanvasQTAgg):
         self.figure = Figure(figsize=(7, 3.2), dpi=100, layout="constrained", facecolor="white")
         super().__init__(self.figure)
         self.setParent(parent)
-        self.setMinimumHeight(240)
+        self.setMinimumHeight(190)
         self.ax_ci = self.figure.add_subplot(111)
         self.ax_load = self.ax_ci.twinx()
         self._ci: list[float] = []
