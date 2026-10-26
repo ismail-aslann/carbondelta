@@ -427,6 +427,18 @@ class DataStore {
         for (final r in _grid[date]!) kind == 'tCO2esd' ? r.ciE : r.ciT,
       ];
 
+  /// Duyarlılık için fosil marjinal yoğunluk: o saatte yalnızca fosil santrallerin ortalama yoğunluğu
+  /// (EXE 1.1.2 data.ci_fossil_24). Yenilenebilirlerin faktörü sıfır olduğundan CI_fosil = CI / fosil payı;
+  /// fosil üretim yoksa 0.
+  List<double> ciFossil24(String date, [String kind = 'tCO2']) {
+    final ci = ci24(date, kind);
+    final recs = _grid[date]!;
+    return [
+      for (var h = 0; h < recs.length; h++)
+        recs[h].fossilPct / 100 > 0 ? ci[h] / (recs[h].fossilPct / 100) : 0.0,
+    ];
+  }
+
   /// dominant, renewable_pct, fossil_pct, shares (13 kaynak)
   ({String dominant, double renewablePct, double fossilPct, Map<String, double> shares})
       mixAt(String date, int hour) {

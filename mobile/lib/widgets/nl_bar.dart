@@ -58,7 +58,7 @@ class _NlBarState extends State<NlBar> {
                       onSubmitted: (_) => _submit(),
                       style: const TextStyle(fontSize: 14),
                       decoration: InputDecoration(
-                        hintText: "Delti'ye yazın: Kompresörü 3'ten 18'e al",
+                        hintText: "Delti'ye yazın…",
                         filled: true,
                         fillColor: Colors.white,
                         isDense: true,
@@ -79,11 +79,13 @@ class _NlBarState extends State<NlBar> {
                   ),
                 ],
               ),
-              if (widget.ai.nlStatus.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 36),
-                  child: Text(widget.ai.nlStatus, style: TextStyle(color: color, fontSize: 12)),
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 36),
+                child: Text(
+                  widget.ai.nlStatus.isNotEmpty ? widget.ai.nlStatus : "Örn. Kompresörü 3'ten 18'e al",
+                  style: TextStyle(color: color, fontSize: 12),
                 ),
+              ),
             ],
           );
         },

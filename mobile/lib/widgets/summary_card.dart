@@ -22,7 +22,7 @@ class SummaryCard extends StatelessWidget {
           titleWidget: Row(children: [
             const Text('Geçmiş özeti', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(width: 8),
-            SourceChip(ai.summarySource),
+            Flexible(child: SourceChip(ai.summarySource)),
           ]),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

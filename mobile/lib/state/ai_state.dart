@@ -130,7 +130,7 @@ class AiState extends ChangeNotifier {
     final c = app.current;
     final reqs = ctx.autoRequests(c);
     if (reqs.isEmpty) {
-      showLocal('Durum', statusMessage(c.result, c.inputs.restricted.toSet()));
+      showLocal('Durum', statusMessage(c.result, c.inputs.restricted.toSet(), c.inputs.p));
       return;
     }
     if (!online) {
@@ -151,7 +151,7 @@ class AiState extends ChangeNotifier {
     final c = app.current;
     final req = builder(c);
     if (req == null) {
-      final msg = statusMessage(c.result, c.inputs.restricted.toSet());
+      final msg = statusMessage(c.result, c.inputs.restricted.toSet(), c.inputs.p);
       showLocal('Açıklama',
           'Bu işlev mevcut senaryo durumunda kullanılamaz (${msg.isEmpty ? 'hesap yok' : msg}).');
       return;
@@ -305,7 +305,7 @@ class AiState extends ChangeNotifier {
           : 'Senaryo sekmesine uyguladım; bu girdilerle yüzde hesaplanamıyor.',
       effectDelta: r.status == core.ok ? fmt.pct(r.deltaPct) : null,
       effectGood: (r.deltaPct ?? 0) <= 0,
-      explain: ex.isNotEmpty ? ex : statusMessage(r, const {}),
+      explain: ex.isNotEmpty ? ex : statusMessage(r, const {}, mg.p),
       via: 'Çözümleyen: $via',
       canOpen: true,
     );

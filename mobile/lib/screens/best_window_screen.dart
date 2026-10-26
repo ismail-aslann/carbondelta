@@ -288,6 +288,7 @@ class _RankRow extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Text(fmt.pct(d), style: TextStyle(fontWeight: w, color: dColor)),
           ],
         ),
@@ -311,7 +312,7 @@ class _DeltaChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const left = 40.0, right = 8.0, top = 8.0, bottom = 30.0;
+    const left = 40.0, right = 8.0, top = 22.0, bottom = 30.0;
     final plot = Rect.fromLTRB(left, top, size.width - right, size.height - bottom);
     double xOf(double v) => plot.left + (v + 0.6) / 24.2 * plot.width;
     var lo = 0.0, hi = 0.0;
@@ -366,7 +367,9 @@ class _DeltaChartPainter extends CustomPainter {
       for (var y = plot.top; y < plot.bottom; y += 6) {
         canvas.drawLine(Offset(x, y), Offset(x, math.min(y + 3, plot.bottom)), dash);
       }
-      _tp(' standart', 9.5).paint(canvas, Offset(x, plot.top));
+      final st = _tp(' standart', 9.5);
+      final sx = x + st.width > plot.right ? x - st.width - 2 : x; // sağ kenardan taşmasın
+      st.paint(canvas, Offset(sx, plot.top));
     }
     canvas.drawLine(Offset(plot.left, plot.bottom), Offset(plot.right, plot.bottom),
         Paint()..color = const Color(0xFFCFD6DE));

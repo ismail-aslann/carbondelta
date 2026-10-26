@@ -18,11 +18,13 @@ const List<(String, String, List<String>)> sections = [
         'girin; sonuç kartı anında güncellenir.',
   ]),
   ('home', 'Ana sayfa', [
-    'Uygulama ana sayfayla açılır. Arkadaki eğri, örnek bir günün 24 saatlik şebeke karbon yoğunluğudur (en kirli ve '
+    'Uygulama ana sayfayla açılır. Üstteki eğri, örnek bir günün 24 saatlik şebeke karbon yoğunluğudur (en kirli ve '
         'en temiz saatler işaretlidir).',
     '• **Son senaryo / Demo senaryo kartı:** En son kaydettiğiniz senaryoyu (yoksa demo senaryoyu) tek adımda açar.',
     '• **Yeni senaryo:** Senaryo ekranını temiz bir başlangıçla açar (kısıtlı saatler temizlenir, oran %100).',
     '• **En temiz saat:** Seçtiğiniz yük için günün tüm hedef saatlerini emisyona göre sıralar.',
+    '• **Yıllık etki:** Aynı kaydırmanın bir yıldaki toplam etkisi (makine ya da tesis geneli).',
+    '• **Tesis planı:** Bir günde her makine için ayrı ayrı en temiz saat ve tesis tepe yükü.',
     "• **Delti'ye sor:** Ne yapmak istediğinizi günlük dille yazarsınız.",
     '• **Geçmiş**, **Hesap dökümü**, **Veri yönetimi**, **Kullanma kılavuzu**, **Kaynaklar**, **İletişim**: ilgili '
         'ekranları açar.',
@@ -57,10 +59,19 @@ const List<(String, String, List<String>)> sections = [
     '• **Kısıtlı saatlerle çakışıyor:** Hedef pencere işaretli bir saati kapsıyor; hedefi değiştirin ya da _En iyi saati '
         "bul_'u kullanın.",
     '• **Aynı pencere:** Standart ve hedef aynı; emisyon değişmez.',
-    '• **Yük yok:** Standart pencerede makine çalışmıyor (0 kWh); yüzde hesaplanamaz.',
+    '• **Yük yok:** Standart pencerede makine çalışmıyor (0 kWh); yüzde hesaplanamaz. Kaydırma oranı %0 ise taşınacak '
+        'enerji yoktur; mesaj oranı artırmanızı söyler.',
     '**Neden oranı değiştirince yüzde değişmiyor?** Ana yüzde, taşınan enerjinin _kendi_ emisyonundaki oransal '
         'değişimdir; oran yarıya inince hem standart hem seçilen emisyon yarıya iner, oran aynı kalır. Oranın etkisi kg '
         'değerlerinde ve **günlük etki**de görünür.',
+    '**Yenilenebilir payı:** Sonuç kartındaki bu satır, kaydırılan enerjinin tüketildiği saatlerde şebekedeki '
+        'yenilenebilir (rüzgâr, güneş, hidro, jeotermal, biyokütle) üretim payını gösterir: standart pencere → seçilen '
+        'pencere. Yeşilse kaydırma, enerjiyi daha temiz kaynakların ağırlıklı olduğu saatlere taşıyor demektir.',
+    '**Fosil marjinal varsayımla:** Ana sonuç şebekenin saatlik _ortalama_ yoğunluğuyla hesaplanır. Oysa bir yük '
+        'kaydırıldığında üretimini değiştiren santral çoğunlukla fosil bir santraldir. Bu satır, kaydırılan yükü o '
+        'saatlerde yalnızca fosil santrallerin karşıladığı varsayımıyla aynı hesabı gösterir (CI_fosil = CI / fosil '
+        'payı). Genellikle daha küçük bir azalma çıkar; gerçek etki büyük olasılıkla iki değer arasındadır. Satıra '
+        'dokununca açıklaması görünür.',
   ]),
   ('best', 'En Temiz Saat', [
     'Makine, gün, standart başlangıç, uzunluk ve oranı seçin; günün tüm geçerli hedef pencereleri emisyona göre '
@@ -68,6 +79,39 @@ const List<(String, String, List<String>)> sections = [
         'saatteki değişimi gösterir; çerçeveli çubuk en temiz penceredir.',
     'Listede bir satıra dokunup seçin; _Seçili saati senaryoya uygula_ ile (ya da satıra iki kez dokunarak) o saati '
         'senaryoya uygularsınız.',
+  ]),
+  ('annual', 'Yıllık Etki', [
+    'Senaryo ekranındaki kaydırma (makine, standart saat, hedef saat, uzunluk, oran ve kısıtlı saatler) seçilen yılın '
+        'verisi olan **her gününde** aynı formülle hesaplanır ve toplanır. Sonuç: yılda kaç kg/ton CO2 azalacağı, '
+        'kaydırılan yükteki yüzde değişim ve makinenin toplam emisyonu içindeki payı.',
+    '**Yıllık değişim** = (ΣS − ΣB) / ΣB × 100. Standart pencerede yükün olmadığı ya da hedefin kısıtlı olduğu günler '
+        'toplama girmez ve _Hesaba giren gün_ kutusunda görünür. Makine verisi yılın tamamını kapsamıyorsa sonuç yalnızca '
+        'verisi olan günlerin toplamıdır; yıla tamamlama yapılmaz.',
+    'Ekran ayrıca yıl boyunca sabit tutulabilecek **en temiz hedef saati** gösterir. _Bu hedefi dene_ onu seçer, '
+        '_Senaryoya uygula_ saatleri Senaryo ekranına aktarır. Aylık tablo ve grafik mevsim farklarını gösterir.',
+    '**Kapsam:** Tek bir makine ya da **Tesis geneli** seçilebilir. Tesis genelinde aynı kaydırma bütün kaydırılabilir '
+        'makinelere uygulanır; toplam emisyon değişimi, makinelerin katkıları ve aylık toplam gösterilir (gün sayısı '
+        'makine-gün olarak toplanır).',
+    '**Yenilenebilir payı** kutusu, kaydırılan enerjinin yıl boyunca şebekedeki yenilenebilir üretimden karşılanan '
+        'payını (enerji ağırlıklı) standart ve hedef pencere için karşılaştırır. Senaryoda _tCO2-eşd_ seçiliyse birimler '
+        'CO2-eşd, _parametrik mod_ açıksa her saat sabit yük kullanılır; ekranın üstündeki not bunu belirtir.',
+    '**Delti yorumlasın** yıllık sonucu sade bir dille açıklar (internet yoksa şablon metin). **PDF rapor** özet '
+        'göstergeleri, Delti yorumunu, aylık grafik ve tabloyu, makine katkılarını ve yöntem notlarını içeren bir rapor '
+        'oluşturup paylaşma menüsüyle gönderir; **CSV** aynı verileri tam hassasiyetle dışa aktarır.',
+  ]),
+  ('plan', 'Tesis Planı', [
+    'Seçilen günde **her kaydırılabilir makine için ayrı ayrı** en temiz hedef pencereyi bulur. **Standart: Otomatik** '
+        '(varsayılan) seçiliyken her makinenin o gün en çok emisyon ürettiği pencere standart kabul edilir. **Elle** '
+        'seçilirse üstteki saat bütün makinelere uygulanır ve her makinenin kartından kendi standart saati ve uzunluğu '
+        'değiştirilebilir. _Dahil_ kutusuyla makine plandan çıkarılır. Plan değişiklik önermezse (ör. standart pencerede '
+        'makine çalışmıyorsa ya da daha temiz saat yoksa) ekran nedenini yazar. Kaydırılamayan ve o gün verisi olmayan '
+        'makineler nedeniyle birlikte listelenir.',
+    'Özet kutularında tesisin toplam emisyon değişimi, kaydırılan yükteki yüzde, tesisin günlük emisyonundaki pay ve '
+        '**tepe yük** (plan öncesi → sonrası) görünür. Bütün yükleri en temiz saate toplamak tesisin saatlik tepe yükünü '
+        'artırabilir. Sözleşme gücü ya da trafo sınırı varsa **Tepe sınırı** girin: planlayıcı makineleri azaltım '
+        'potansiyeline göre sırayla yerleştirir, sınırı aşan pencereyi atlayıp sınırı aşmayan en temiz pencereyi seçer.',
+    "Grafik plan öncesi/sonrası tesis yükünü ve şebeke karbon yoğunluğunu gösterir. Bir makinenin kartındaki _Senaryoda "
+        "aç_ o makineyi Senaryo ekranında açar; _CSV_ planı kaydeder.",
   ]),
   ('delti', "Delti'ye Sor", [
     "**Delti**, CarbonDelta'nın yapay zekâ (AI) yardımcısıdır. Hesap yapmaz; motorun hesapladığı sonuçları açıklar ve "
@@ -141,8 +185,9 @@ const List<(String, String, List<String>)> sections = [
     '• **Ana sayfa (Esc):** Sol üstteki ⌂ düğmesi ya da telefonun geri tuşu.',
     '• **Kılavuz (F1):** Diğer › Kılavuz.',
     "• **Delti ayarları (Ctrl+,):** Delti'ye Sor › ⚙ ya da Delti kartı › Daha fazla › Delti ayarları…",
-    "• **Sekmeler (Ctrl+1…9):** Alttaki çubuk: Senaryo · En temiz saat · Delti'ye sor · Geçmiş · Diğer (Hesabı Göster, "
-        'Veri, Kılavuz, Kaynaklar, İletişim).',
+    "• **Sekmeler (Ctrl+1…0):** Alttaki çubuk: Senaryo · Temiz saat · Delti'ye sor · Geçmiş · Diğer (Yıllık Etki, "
+        'Tesis Planı, Hesabı Göster, Veri, Kılavuz, Kaynaklar, İletişim).',
+    '• **Tam ekran / sunum modu (F11):** Diğer › Tam ekran (sunum modu); aynı yerden kapatılır.',
     '• **Senaryoyu kaydet (Ctrl+S):** Sonuç kartındaki _Senaryoyu kaydet_.',
     '• **En iyi saati bul (Ctrl+B):** Zaman penceresi kartındaki _En iyi saati bul_.',
     "• **Geçmiş'te sil (Delete):** Kaydın yanındaki çöp kutusu.",
@@ -152,7 +197,9 @@ const List<(String, String, List<String>)> sections = [
     '• **EPİAŞ 2025:** 8.760 saatlik kaynak bazında üretim; her saatin karbon yoğunluğu buradan hesaplanır.',
     '• **ETKB 2023:** Yakıt türü başına resmî emisyon faktörleri.',
     '• **Zenodo:** Bir imalat tesisindeki makinelerin temizlenmiş enerji ölçümleri (7 makine).',
-    '**Sınırlılıklar:** Yük örnek veridir; kaydırma aynı gün içindedir; hesap saatlik ortalamayla yapılır; Delti\'nin '
+    '**Sınırlılıklar:** Yük örnek veridir; kaydırma aynı gün içindedir; hesap saatlik _ortalama_ karbon yoğunluğuyla '
+        'yapılır (gerçek etki o saatteki marjinal santrale bağlıdır, sonuçlar gösterge niteliğindedir); ETKB 2023 '
+        'faktörleri 2025 üretimine uygulanır; ithalat/ihracat hesaba girmez; Delti\'nin '
         'açıklamaları için internet ve API anahtarı gerekir. Para/TL kazancı, CBAM hesabı, sensör bağlantısı ve otomatik '
         'makine kontrolü kapsam dışıdır.',
   ]),

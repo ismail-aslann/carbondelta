@@ -2,6 +2,7 @@
 // MainWindow: pages, tabs, footer, _on_start_action).
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../ai/ai_context.dart' as ctx;
 import '../engine/core.dart' as core;
@@ -12,6 +13,7 @@ import '../ui/theme.dart' as th;
 import '../widgets/delti_box.dart';
 import '../widgets/nl_bar.dart';
 import '../widgets/summary_card.dart';
+import 'annual_screen.dart';
 import 'best_window_screen.dart';
 import 'calc_screen.dart';
 import 'contact_screen.dart';
@@ -20,16 +22,19 @@ import 'guide_screen.dart';
 import 'delti_settings_screen.dart';
 import 'history_screen.dart';
 import 'nl_screen.dart';
+import 'plan_screen.dart';
 import 'scenario_screen.dart';
 import 'sources_screen.dart';
 import 'start_screen.dart';
 
 /// Masaüstündeki sekme sırası.
-enum AppTab { scenario, best, nl, calc, history, data, guide, sources, contact }
+enum AppTab { scenario, best, annual, plan, nl, calc, history, data, guide, sources, contact }
 
 const Map<AppTab, String> tabTitles = {
   AppTab.scenario: 'Senaryo',
   AppTab.best: 'En Temiz Saat',
+  AppTab.annual: 'Yıllık Etki',
+  AppTab.plan: 'Tesis Planı',
   AppTab.nl: "Delti'ye Sor",
   AppTab.calc: 'Hesabı Göster',
   AppTab.history: 'Geçmiş',
@@ -92,10 +97,22 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
-  void _open(AppTab t) => setState(() {
-        _home = false;
-        _tab = t;
-      });
+  bool _fullscreen = false;
+
+  void _open(AppTab t) {
+    app.tabFooter.value = null; // Yıllık Etki / Tesis Planı açılınca kendi etiketini yazar
+    setState(() {
+      _home = false;
+      _tab = t;
+    });
+  }
+
+  /// Sunum modu (masaüstünde F11): durum ve gezinme çubukları gizlenir.
+  Future<void> _toggleFullscreen() async {
+    _fullscreen = !_fullscreen;
+    await SystemChrome.setEnabledSystemUIMode(_fullscreen ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
+    if (mounted) setState(() {});
+  }
 
   void goHome() {
     _refreshStart();
@@ -117,6 +134,10 @@ class _MainShellState extends State<MainShell> {
         _open(AppTab.scenario);
       case 'best':
         _open(AppTab.best);
+      case 'annual':
+        _open(AppTab.annual);
+      case 'plan':
+        _open(AppTab.plan);
       case 'nl':
         _open(AppTab.nl);
       case 'history':
@@ -157,6 +178,11 @@ class _MainShellState extends State<MainShell> {
         );
       case AppTab.best:
         return BestWindowScreen(key: ValueKey('best${app.dataVersion}'), app: app, onApplied: () => _open(AppTab.scenario));
+      case AppTab.annual:
+        return AnnualScreen(
+            key: ValueKey('annual${app.dataVersion}'), app: app, ai: ai, onApplied: () => _open(AppTab.scenario));
+      case AppTab.plan:
+        return PlanScreen(key: ValueKey('plan${app.dataVersion}'), app: app, onApplied: () => _open(AppTab.scenario));
       case AppTab.nl:
         return NlScreen(
           ai: ai,
@@ -189,11 +215,15 @@ class _MainShellState extends State<MainShell> {
     final t = await showModalBottomSheet<AppTab>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true, // liste uzadı: küçük ekranda kaydırılabilir
       builder: (ctx) => SafeArea(
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final (tab, icon) in const [
+              (AppTab.annual, Icons.calendar_month_outlined),
+              (AppTab.plan, Icons.factory_outlined),
               (AppTab.calc, Icons.description_outlined),
               (AppTab.data, Icons.storage),
               (AppTab.guide, Icons.menu_book_outlined),
@@ -207,11 +237,23 @@ class _MainShellState extends State<MainShell> {
                 onTap: () => Navigator.pop(ctx, tab),
               ),
             ListTile(
+              leading: Icon(_fullscreen ? Icons.fullscreen_exit : Icons.fullscreen, color: th.primary),
+              title: Text(_fullscreen ? 'Tam ekrandan çık' : 'Tam ekran (sunum modu)'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _toggleFullscreen();
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.home_outlined, color: th.primary),
               title: const Text('Ana sayfa'),
-              onTap: () => Navigator.pop(ctx),
+              onTap: () {
+                Navigator.pop(ctx);
+                goHome();
+              },
             ),
           ],
+        ),
         ),
       ),
     );
@@ -264,16 +306,18 @@ class _MainShellState extends State<MainShell> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListenableBuilder(
-              listenable: app,
+              listenable: Listenable.merge([app, app.tabFooter]),
               builder: (context, _) {
                 final i = app.inputs;
-                final real = app.data.isReal(i.assetId);
+                // Yıllık Etki / Tesis Planı kendi kapsamlarının kaynak etiketini gösterir (yalnızca açıkken).
+                final own = (_tab == AppTab.annual || _tab == AppTab.plan) ? app.tabFooter.value : null;
+                final real = own?.$2 ?? app.data.isReal(i.assetId);
                 return Container(
                   width: double.infinity,
                   color: th.bg,
                   padding: const EdgeInsets.fromLTRB(10, 4, 10, 4),
                   child: Text(
-                    app.data.sourceLabel(i.assetId, i.date),
+                    own?.$1 ?? app.data.sourceLabel(i.assetId, i.date),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: real ? th.primaryDark : th.muted,
@@ -287,6 +331,9 @@ class _MainShellState extends State<MainShell> {
             NavigationBar(
               selectedIndex: navIndex,
               height: 64,
+              labelTextStyle: const WidgetStatePropertyAll(
+                TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, letterSpacing: 0, overflow: TextOverflow.ellipsis),
+              ),
               onDestinationSelected: (k) {
                 if (k < _bottom.length) {
                   _open(_bottom[k]);
@@ -296,7 +343,7 @@ class _MainShellState extends State<MainShell> {
               },
               destinations: const [
                 NavigationDestination(icon: Icon(Icons.tune), label: 'Senaryo'),
-                NavigationDestination(icon: Icon(Icons.search), label: 'En temiz saat'),
+                NavigationDestination(icon: Icon(Icons.search), label: 'Temiz saat', tooltip: 'En temiz saat'),
                 NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: "Delti'ye sor"),
                 NavigationDestination(icon: Icon(Icons.schedule), label: 'Geçmiş'),
                 NavigationDestination(icon: Icon(Icons.more_horiz), label: 'Diğer'),

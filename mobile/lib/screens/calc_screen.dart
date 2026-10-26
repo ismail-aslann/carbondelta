@@ -12,6 +12,7 @@ import '../engine/explain.dart';
 import '../state/app_state.dart';
 import '../ui/fmt.dart' as fmt;
 import '../ui/theme.dart' as th;
+import '../widgets/stat_grid.dart';
 
 const Map<String, String> windowLabels = {'standard': 'Standart', 'scenario': 'Seçilen'};
 const Map<String, String> statusLabels = {
@@ -128,34 +129,7 @@ class CalcScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 2.1,
-              children: [
-                for (final (t, v, col) in stats)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          th.Muted(t, size: 12),
-                          const SizedBox(height: 2),
-                          FittedBox(
-                            child: Text(v,
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: col)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            StatGrid([for (final (t, v, col) in stats) Stat(t, v, col)]),
             const SizedBox(height: 10),
             th.SectionCard(
               title: 'Saat saat döküm',

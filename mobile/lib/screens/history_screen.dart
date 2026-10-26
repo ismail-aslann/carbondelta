@@ -116,7 +116,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             for (final h in _rows) ...[
               _HistoryCard(
                 h: h,
-                machineName: names[h.assetId] ?? h.assetId,
+                machineName: names[h.assetId] ?? 'Silinmiş makine',
                 onTap: () => _restore(h),
                 onDelete: () => _delete(h),
               ),

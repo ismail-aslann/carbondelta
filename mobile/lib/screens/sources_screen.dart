@@ -3,6 +3,22 @@
 import 'package:flutter/material.dart';
 
 import '../ui/theme.dart' as th;
+import '../widgets/rich.dart';
+
+/// Yöntem ve sınırlılıklar (EXE 1.1.1 tabs.METHOD_HTML); PDF raporda da kullanılır.
+const List<String> methodItems = [
+  '**Ortalama karbon yoğunluğu:** Her saatin yoğunluğu o saatteki yurt içi üretim karışımından hesaplanır (konum '
+      'bazlı yöntem). Bir yükü kaydırmanın şebekedeki gerçek etkisi, o saatte üretimini artıran ya da azaltan '
+      '_marjinal_ santrale bağlıdır. Bu nedenle sonuçlar karşılaştırma ve önceliklendirme için bir göstergedir; '
+      'marjinal emisyon faktörü desteği ileride eklenebilir.',
+  '**Faktör yılı:** ETKB 2023 emisyon faktörleri 2025 üretimine uygulanır; yeni faktörler Veri sekmesinden eklenebilir.',
+  '**Kapsam:** Yalnızca EPİAŞ gerçek zamanlı üretim verisindeki yurt içi üretim kullanılır; elektrik ithalatı/ihracatı '
+      've bu veride yer almayan üretim (ör. dağıtık güneşin bir kısmı) hesaba girmez.',
+  '**Kaydırma varsayımı:** Kaydırılan enerji miktarı aynı kalır, yük aynı gün içinde taşınır; verim, bekleme ve ısıl '
+      'kayıp farkları yoktur. Vardiya, personel ve kalite gibi işletme kısıtları kullanıcı tarafından _kısıtlı saat_ '
+      'olarak girilir.',
+  '**Yıllık etki:** Yalnızca verisi olan günlerin toplamıdır; eksik günler tahminle tamamlanmaz.',
+];
 
 const List<(String, String, String)> sourceCards = [
   (
@@ -69,6 +85,14 @@ class SourcesScreen extends StatelessWidget {
               TextSpan(text: 'örnek', style: TextStyle(fontWeight: FontWeight.w700)),
               TextSpan(text: ' veridir; Balıkesir tesisinin ölçümü değildir. Sonuçlar yöntemi ve büyüklük mertebesini gösterir.'),
             ]),
+          ),
+        ),
+        const SizedBox(height: 10),
+        th.SectionCard(
+          title: 'Yöntem ve sınırlılıklar',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [for (final m in methodItems) RichPara(m, bullet: true)],
           ),
         ),
         const SizedBox(height: 10),

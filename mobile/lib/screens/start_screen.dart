@@ -26,6 +26,8 @@ class StartItem {
 const List<StartItem> startItems = [
   StartItem('new', 'Yeni senaryo', 'Yük kaydırmayı hesapla', Icons.show_chart),
   StartItem('best', 'En temiz saat', 'Otomatik öneri', Icons.search),
+  StartItem('annual', 'Yıllık etki', 'Bir yılda kaç ton CO₂', Icons.calendar_month_outlined),
+  StartItem('plan', 'Tesis planı', 'Makine başına en temiz saat', Icons.factory_outlined),
   StartItem('nl', "Delti'ye sor", 'Yazarak senaryo kur', null),
   StartItem('history', 'Geçmiş', 'Kayıtlı senaryolar', Icons.schedule),
   StartItem('calc', 'Hesap dökümü', 'Formül ve tablolar', Icons.description_outlined),
@@ -61,7 +63,7 @@ class StartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: CustomPaint(
-        painter: _StartBackground(curve),
+        painter: const _StartBackground(),
         child: SafeArea(
           child: Column(
             children: [
@@ -95,6 +97,15 @@ class StartScreen extends StatelessWidget {
                       good: resumeGood,
                       onTap: () => onAction('resume'),
                     ),
+                    if (curve.length == 24) ...[
+                      const SizedBox(height: 12),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 4),
+                        child: Text('Örnek gün · saatlik karbon yoğunluğu',
+                            style: TextStyle(color: startMuted, fontSize: 11.5)),
+                      ),
+                      _CurveCard(curve: curve),
+                    ],
                     const SizedBox(height: 10),
                     Container(
                       decoration: BoxDecoration(
@@ -190,6 +201,7 @@ class _ResumeCard extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Text(delta,
                   style: TextStyle(
                       color: good ? mint : const Color(0xFFFF9A8A), fontSize: 18, fontWeight: FontWeight.w700)),
@@ -247,8 +259,7 @@ class _Row extends StatelessWidget {
 }
 
 class _StartBackground extends CustomPainter {
-  _StartBackground(this.curve);
-  final List<double> curve;
+  const _StartBackground();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -277,10 +288,47 @@ class _StartBackground extends CustomPainter {
     for (var y = 0.0; y <= h; y += 60) {
       canvas.drawLine(Offset(0, y), Offset(w, y), gridPaint);
     }
-    if (curve.length != 24) return;
+  }
+
+  @override
+  bool shouldRepaint(covariant _StartBackground old) => false;
+}
+
+/// Örnek günün karbon yoğunluğu eğrisi (masaüstünde arka planda; mobilde
+/// liste satırlarının arkasında kalmasın diye kendi kartında).
+class _CurveCard extends StatelessWidget {
+  const _CurveCard({required this.curve});
+  final List<double> curve;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 104,
+      decoration: BoxDecoration(
+        color: const Color.fromRGBO(4, 30, 24, 0.45),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: CustomPaint(painter: _CurvePainter(curve), size: Size.infinite),
+      ),
+    );
+  }
+}
+
+class _CurvePainter extends CustomPainter {
+  _CurvePainter(this.curve);
+  final List<double> curve;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
     final lo = curve.reduce(math.min), hi = curve.reduce(math.max);
     final span = (hi - lo) == 0 ? 1.0 : hi - lo;
-    final top = h * 0.52, bottom = h * 0.88;
+    // Etiketler için üstte ve altta pay bırakılır.
+    const top = 26.0;
+    final bottom = h - 26;
     final pts = [
       for (var i = 0; i < 24; i++)
         Offset(20 + i * (w - 40) / 23, bottom - (curve[i] - lo) / span * (bottom - top)),
@@ -298,7 +346,7 @@ class _StartBackground extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color.fromRGBO(95, 224, 176, 0.12), Color.fromRGBO(95, 224, 176, 0)],
+          colors: [Color.fromRGBO(95, 224, 176, 0.20), Color.fromRGBO(95, 224, 176, 0)],
         ).createShader(Rect.fromLTRB(0, top, w, h)),
     );
     final line = Path()..moveTo(pts.first.dx, pts.first.dy);
@@ -308,7 +356,7 @@ class _StartBackground extends CustomPainter {
     canvas.drawPath(
       line,
       Paint()
-        ..color = const Color.fromRGBO(95, 224, 176, 0.49)
+        ..color = const Color.fromRGBO(95, 224, 176, 0.85)
         ..strokeWidth = 2.4
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
@@ -327,10 +375,10 @@ class _StartBackground extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
       final dx = math.max(4.0, math.min(pt.dx - tp.width / 2, w - tp.width - 4));
-      tp.paint(canvas, Offset(dx, above ? pt.dy - 22 : pt.dy + 8));
+      tp.paint(canvas, Offset(dx, above ? pt.dy - tp.height - 6 : pt.dy + 6));
     }
   }
 
   @override
-  bool shouldRepaint(covariant _StartBackground old) => old.curve != curve;
+  bool shouldRepaint(covariant _CurvePainter old) => old.curve != curve;
 }

@@ -317,10 +317,13 @@ class _MachineWizardState extends State<MachineWizard> {
         const SizedBox(height: 6),
         ProfileBars(values: _check?.profile ?? const []),
         const SizedBox(height: 10),
-        Row(
+        // Dar ekranda iki düğme yan yana sığmazsa alt satıra iner.
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          spacing: 8,
+          runSpacing: 8,
           children: [
             OutlinedButton(onPressed: _path == null || _busy ? null : _runCheck, child: const Text('Yeniden kontrol et')),
-            const Spacer(),
             FilledButton(
               onPressed: _ok && !_busy ? _add : null,
               child: Text(_check != null && !_check!.report.hasErrors
@@ -650,9 +653,9 @@ class _DataScreenState extends State<DataScreen> {
                   _PkgTile(
                     title: p.name,
                     subtitle: '⚠ Okunamadı — paket atlandı\n'
-                        '${_errors[p.id]!.length > 60 ? _errors[p.id]!.substring(0, 60) : _errors[p.id]!}',
+                        'Dosyaları eksik ya da bozuk; silip yeniden ekleyin.',
                     error: true,
-                    tooltip: '${_errors[p.id]}\nÇöp kutusuyla silip dosyayı yeniden ekleyin.',
+                    tooltip: 'Ayrıntı: ${_errors[p.id]}',
                     onDelete: () => _delete(p),
                   )
                 else

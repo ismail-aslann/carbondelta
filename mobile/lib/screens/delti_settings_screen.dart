@@ -1,6 +1,7 @@
 // Delti ayarları: API anahtarı uygulama içinden girilir, denenir ve saklanır
 // (desktop/delti_settings.py).
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -38,6 +39,7 @@ class _DeltiSettingsScreenState extends State<DeltiSettingsScreen> {
   bool? _ok;
   bool _canRemove = false;
   late String _avatar;
+  final _link = TapGestureRecognizer();
 
   @override
   void initState() {
@@ -54,6 +56,7 @@ class _DeltiSettingsScreenState extends State<DeltiSettingsScreen> {
 
   @override
   void dispose() {
+    _link.dispose();
     _key.dispose();
     _model.dispose();
     super.dispose();
@@ -181,18 +184,17 @@ class _DeltiSettingsScreenState extends State<DeltiSettingsScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text('Anahtarınız yoksa: '),
-              InkWell(
-                onTap: () => launchUrl(Uri.parse(keyPages[_provider]!), mode: LaunchMode.externalApplication),
-                child: Text(keyPages[_provider]!,
-                    style: const TextStyle(color: th.primary, decoration: TextDecoration.underline)),
-              ),
-              const Text(' adresinden ücretsiz/ücretli anahtar alabilirsiniz.'),
-            ],
-          ),
+          // Tek akan paragraf: bağlantı satır ortasında kopuk durmaz.
+          Text.rich(TextSpan(children: [
+            const TextSpan(text: 'Anahtarınız yoksa: '),
+            TextSpan(
+              text: keyPages[_provider]!,
+              style: const TextStyle(color: th.primary, decoration: TextDecoration.underline),
+              recognizer: _link
+                ..onTap = () => launchUrl(Uri.parse(keyPages[_provider]!), mode: LaunchMode.externalApplication),
+            ),
+            const TextSpan(text: ' adresinden ücretsiz/ücretli anahtar alabilirsiniz.'),
+          ])),
           if (widget.cfg.source.isNotEmpty) ...[
             const SizedBox(height: 8),
             th.Muted(sourceText[widget.cfg.source] ?? ''),

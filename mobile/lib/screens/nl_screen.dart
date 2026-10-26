@@ -57,26 +57,36 @@ class _NlScreenState extends State<NlScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Delti(state: avatarState, size: 56),
+                      Delti(state: avatarState, size: 48),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("Delti'ye sor", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                            th.Muted('Ne yapmak istediğinizi günlük dille yazın.'),
+                            Wrap(
+                              spacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                const Text("Delti'ye sor",
+                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                                Tooltip(
+                                  message: 'Delti bir yapay zekâ yardımcısıdır; hesap yapmaz, karar sizindir.',
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                    decoration: BoxDecoration(
+                                        color: th.primarySoft, borderRadius: BorderRadius.circular(9)),
+                                    child: const Text('AI',
+                                        style: TextStyle(
+                                            color: th.primary, fontWeight: FontWeight.w600, fontSize: 11.5)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            const th.Muted('Ne yapmak istediğinizi günlük dille yazın.'),
                           ],
-                        ),
-                      ),
-                      Tooltip(
-                        message: 'Delti bir yapay zekâ yardımcısıdır; hesap yapmaz, karar sizindir.',
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                          decoration:
-                              BoxDecoration(color: th.primarySoft, borderRadius: BorderRadius.circular(9)),
-                          child: const Text('AI',
-                              style: TextStyle(color: th.primary, fontWeight: FontWeight.w600, fontSize: 11.5)),
                         ),
                       ),
                       IconButton(
@@ -115,7 +125,7 @@ class _NlScreenState extends State<NlScreen> {
                   ],
                   const SizedBox(height: 10),
                   Container(
-                    margin: const EdgeInsets.only(left: 40),
+                    margin: const EdgeInsets.only(left: 24),
                     padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
                     decoration: BoxDecoration(
                       color: th.primarySoft,
@@ -180,9 +190,13 @@ class _NlScreenState extends State<NlScreen> {
                       th.Muted(a.explain),
                     ],
                     const SizedBox(height: 6),
-                    Row(
+                    th.Muted(a.via, size: 12),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
-                        Expanded(child: th.Muted(a.via, size: 12)),
                         TextButton(
                           onPressed: () {
                             _edit.clear();

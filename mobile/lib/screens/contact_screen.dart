@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../ui/theme.dart' as th;
 
-const String appVersion = '1.1.0';
+const String appVersion = '1.1.3';
 
 class Person {
   const Person(this.role, this.name, this.phone, this.email, [this.org]);
