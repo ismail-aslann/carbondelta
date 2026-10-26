@@ -66,16 +66,19 @@ class _PlanPainter extends CustomPainter {
     for (final v in [...p.before, ...p.after]) {
       top0 = math.max(top0, v);
     }
-    final yTop = top0 * 1.18;
+    // Yuvarlak eksen adımı (ör. 0, 50, 100, 150): 43, 87, 130 gibi değerler yerine.
+    final step = _niceStep(top0 * 1.18 / 4);
+    final yTop = (top0 * 1.18 / step).ceilToDouble() * step;
     double yLoad(double v) => plot.bottom - v / yTop * plot.height;
 
     final grid = Paint()
       ..color = const Color(0xFFE9EDF1)
       ..strokeWidth = 0.8;
-    for (var k = 0; k <= 4; k++) {
-      final v = yTop * k / 4;
+    final nTicks = (yTop / step).round();
+    for (var k = 0; k <= nTicks; k++) {
+      final v = step * k;
       canvas.drawLine(Offset(plot.left, yLoad(v)), Offset(plot.right, yLoad(v)), grid);
-      final tp = _tp(fmt.num(v, 0));
+      final tp = _tp(fmt.num(v, step % 1 == 0 ? 0 : 1));
       tp.paint(canvas, Offset(plot.left - tp.width - 4, yLoad(v) - tp.height / 2));
     }
 
@@ -165,4 +168,14 @@ class _PlanPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PlanPainter old) => true;
+}
+
+/// En yakın "güzel" adım: 1, 2, 2,5 veya 5 × 10ⁿ.
+double _niceStep(double raw) {
+  if (raw <= 0 || raw.isNaN) return 1;
+  final mag = math.pow(10, (math.log(raw) / math.ln10).floor()).toDouble();
+  for (final m in const [1.0, 2.0, 2.5, 5.0, 10.0]) {
+    if (raw <= m * mag) return m * mag;
+  }
+  return 10 * mag;
 }

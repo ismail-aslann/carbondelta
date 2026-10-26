@@ -540,37 +540,51 @@ class _AnnualScreenState extends State<AnnualScreen> {
     );
   }
 
+  /// Aylık döküm: telefon genişliğine sığar (yana kaydırma yok); uzun sayılar hücrede küçülür.
   Widget _monthTable(annual.AnnualResult r) {
     final months = [for (final m in r.months) if (m.days > 0) m];
     Color? col(annual.MonthTotal m) => m.deltaKg == 0 ? null : (m.deltaKg < 0 ? th.good : th.bad);
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowHeight: 38,
-        dataRowMinHeight: 30,
-        dataRowMaxHeight: 34,
-        columnSpacing: 14,
-        headingTextStyle: const TextStyle(color: th.muted, fontWeight: FontWeight.w600, fontSize: 12.5),
-        columns: const [
-          DataColumn(label: Text('Ay')),
-          DataColumn(label: Text('Gün'), numeric: true),
-          DataColumn(label: Text('Standart (kg)'), numeric: true),
-          DataColumn(label: Text('Seçilen (kg)'), numeric: true),
-          DataColumn(label: Text('Değişim (kg)'), numeric: true),
-          DataColumn(label: Text('Değişim'), numeric: true),
-        ],
-        rows: [
-          for (final m in months)
-            DataRow(cells: [
-              DataCell(Text(ctx.monthNames[m.month - 1])),
-              DataCell(Text('${m.days}')),
-              DataCell(Text(fmt.num(m.baselineKg, 1))),
-              DataCell(Text(fmt.num(m.scenarioKg, 1))),
-              DataCell(Text(fmt.num(m.deltaKg, 1), style: TextStyle(color: col(m)))),
-              DataCell(Text(fmt.pct(m.deltaPct), style: TextStyle(color: col(m)))),
-            ]),
-        ],
-      ),
+    const head = TextStyle(color: th.muted, fontWeight: FontWeight.w600, fontSize: 11.5, height: 1.2);
+    Widget cell(String t, {TextAlign align = TextAlign.right, TextStyle? style, bool header = false}) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
+          child: header
+              ? Text(t, textAlign: align, style: head)
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: align == TextAlign.left ? Alignment.centerLeft : Alignment.centerRight,
+                  child: Text(t, maxLines: 1, style: (style ?? const TextStyle()).copyWith(fontSize: 13)),
+                ),
+        );
+    return Table(
+      columnWidths: const {
+        0: FlexColumnWidth(1.25),
+        1: FlexColumnWidth(0.6),
+        2: FlexColumnWidth(1.15),
+        3: FlexColumnWidth(1.15),
+        4: FlexColumnWidth(1.1),
+        5: FlexColumnWidth(1.25),
+      },
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      border: const TableBorder(horizontalInside: BorderSide(color: th.border)),
+      children: [
+        TableRow(children: [
+          cell('Ay', align: TextAlign.left, header: true),
+          cell('Gün', header: true),
+          cell('Standart (kg)', header: true),
+          cell('Seçilen (kg)', header: true),
+          cell('Değişim (kg)', header: true),
+          cell('Değişim', header: true),
+        ]),
+        for (final m in months)
+          TableRow(children: [
+            cell(ctx.monthNames[m.month - 1], align: TextAlign.left),
+            cell('${m.days}'),
+            cell(fmt.num(m.baselineKg, 1)),
+            cell(fmt.num(m.scenarioKg, 1)),
+            cell(fmt.num(m.deltaKg, 1), style: TextStyle(color: col(m))),
+            cell(fmt.pct(m.deltaPct), style: TextStyle(color: col(m))),
+          ]),
+      ],
     );
   }
 }
