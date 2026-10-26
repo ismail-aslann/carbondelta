@@ -8,7 +8,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-APP_NAME = "CarbonDelta"        # pencere başlığı, uygulama adı
+DEFAULT_APP_NAME = "CarbonDelta"
+APP_NAME = "CarbonDelta"      # pencere başlığı, uygulama adı
 USER_DIR_NAME = "CarbonDelta"   # %APPDATA% altındaki klasör
 
 

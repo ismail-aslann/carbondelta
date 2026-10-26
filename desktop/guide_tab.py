@@ -73,13 +73,36 @@ günlük toplam emisyonuna etkisi yazar. <b>Senaryoyu kaydet</b> ({_k('Ctrl', 'S
 </ul>
 <p><b>Neden oranı değiştirince yüzde değişmiyor?</b> Ana yüzde, taşınan enerjinin <i>kendi</i> emisyonundaki
 oransal değişimdir; oran yarıya inince hem standart hem seçilen emisyon yarıya iner, oran aynı kalır.
-Oranın etkisi kg değerlerinde ve <b>günlük etki</b>de görünür.</p>"""),
+Oranın etkisi kg değerlerinde ve <b>günlük etki</b>de görünür.</p>
+<p><b>Yenilenebilir payı:</b> Sonuç kartındaki bu satır, kaydırılan enerjinin tüketildiği saatlerde şebekedeki
+yenilenebilir (rüzgâr, güneş, hidro, jeotermal, biyokütle) üretim payını gösterir: standart pencere → seçilen
+pencere. Yeşilse kaydırma, enerjiyi daha temiz kaynakların ağırlıklı olduğu saatlere taşıyor demektir.</p>"""),
 
     ("best", "En Temiz Saat", f"""
 <p>Makine, gün, standart başlangıç, uzunluk ve oranı seçin; günün tüm geçerli hedef pencereleri emisyona göre
 sıralanır (en üstte en temiz). Senaryo ekranındaki kısıtlı saatler burada da uygulanır. Sağdaki grafik her hedef
 saatteki değişimi gösterir; çerçeveli çubuk en temiz penceredir.</p>
 <p>Tabloda {_k('↑')} {_k('↓')} ile satır seçip {_k('Enter')} ile o saati senaryoya uygularsınız.</p>"""),
+
+    ("annual", "Yıllık Etki", """
+<p>Senaryo ekranındaki kaydırma (makine, standart saat, hedef saat, uzunluk, oran ve kısıtlı saatler) seçilen
+yılın verisi olan <b>her gününde</b> aynı formülle hesaplanır ve toplanır. Sonuç: yılda kaç kg/ton CO2
+azalacağı, kaydırılan yükteki yüzde değişim ve makinenin toplam emisyonu içindeki payı.</p>
+<p><b>Yıllık değişim</b> = (ΣS − ΣB) / ΣB × 100. Standart pencerede yükün olmadığı ya da hedefin kısıtlı
+olduğu günler toplama girmez ve <i>Hesaba giren gün</i> kutusunda görünür. Makine verisi yılın tamamını
+kapsamıyorsa sonuç yalnızca verisi olan günlerin toplamıdır; yıla tamamlama yapılmaz.</p>
+<p>Ekran ayrıca yıl boyunca sabit tutulabilecek <b>en temiz hedef saati</b> gösterir. <i>Bu hedefi dene</i>
+onu seçer, <i>Senaryoya uygula</i> saatleri Senaryo sekmesine aktarır. Aylık tablo ve grafik mevsim
+farklarını gösterir.</p>
+<p><b>Kapsam:</b> Tek bir makine ya da <b>Tesis geneli</b> seçilebilir. Tesis genelinde aynı kaydırma bütün
+kaydırılabilir makinelere uygulanır; toplam emisyon değişimi, makinelerin katkıları ve aylık toplam gösterilir
+(gün sayısı makine-gün olarak toplanır).</p>
+<p><b>Yenilenebilir payı</b> kutusu, kaydırılan enerjinin yıl boyunca şebekedeki yenilenebilir üretimden karşılanan
+payını (enerji ağırlıklı) standart ve hedef pencere için karşılaştırır. Senaryoda <i>tCO2-eşd</i> seçiliyse birimler
+CO2-eşd, <i>parametrik mod</i> açıksa her saat sabit yük kullanılır; ekranın üstündeki not bunu belirtir.</p>
+<p><b>Delti yorumlasın</b> yıllık sonucu sade bir dille açıklar (internet yoksa şablon metin). <b>PDF rapor</b>
+özet göstergeleri, Delti yorumunu, aylık grafik ve tabloyu, makine katkılarını ve yöntem notlarını içeren bir rapor
+kaydeder; <b>CSV</b> aynı verileri tam hassasiyetle dışa aktarır.</p>"""),
 
     ("delti", "Delti'ye Sor", f"""
 <p><b>Delti</b>, CarbonDelta'nın yapay zekâ (AI) yardımcısıdır. Hesap yapmaz; motorun hesapladığı sonuçları
@@ -160,8 +183,9 @@ değişikliği <i>shared/FORMUL.md</i> sürüm süreciyle geliştiriciler taraf�
 <table cellspacing="0" cellpadding="5">
 <tr><td>{_k('Esc')}</td><td>Ana sayfaya dön (açık bir liste/takvim varsa önce onu kapatır)</td></tr>
 <tr><td>{_k('F1')}</td><td>Kullanma kılavuzu</td></tr>
+<tr><td>{_k('F11')}</td><td>Tam ekran (sunum modu) aç/kapat</td></tr>
 <tr><td>{_k('Ctrl', ',')}</td><td>Delti ayarları (API anahtarı)</td></tr>
-<tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '9')}</td><td>Senaryo · En Temiz Saat · Delti'ye Sor · Hesabı Göster · Geçmiş · Veri · Kılavuz · Kaynaklar · İletişim</td></tr>
+<tr><td>{_k('Ctrl', '1')} … {_k('Ctrl', '0')}</td><td>Senaryo · En Temiz Saat · Yıllık Etki · Delti'ye Sor · Hesabı Göster · Geçmiş · Veri · Kılavuz · Kaynaklar · İletişim</td></tr>
 <tr><td>{_k('Ctrl', 'Tab')} / {_k('Ctrl', 'Shift', 'Tab')}</td><td>Sonraki / önceki sekme</td></tr>
 <tr><td>{_k('Tab')} / {_k('Shift', 'Tab')}</td><td>Alanlar arasında ileri / geri</td></tr>
 <tr><td>{_k('↑')} {_k('↓')}</td><td>Sayı ve saat değerini değiştir, listede seç, kaydırıcıyı oynat</td></tr>
@@ -182,7 +206,9 @@ en üstte {_k('↑')} ile <i>Son senaryo</i> kartına çıkılır.</p>"""),
 <li><b>ETKB 2023:</b> Yakıt türü başına resmî emisyon faktörleri.</li>
 <li><b>Zenodo:</b> Bir imalat tesisindeki makinelerin temizlenmiş enerji ölçümleri (7 makine).</li>
 </ul>
-<p><b>Sınırlılıklar:</b> Yük örnek veridir; kaydırma aynı gün içindedir; hesap saatlik ortalamayla yapılır;
+<p><b>Sınırlılıklar:</b> Yük örnek veridir; kaydırma aynı gün içindedir; hesap saatlik <i>ortalama</i> karbon
+yoğunluğuyla yapılır (gerçek etki o saatteki marjinal santrale bağlıdır, sonuçlar gösterge niteliğindedir);
+ETKB 2023 faktörleri 2025 üretimine uygulanır; ithalat/ihracat hesaba girmez;
 Delti'nin açıklamaları için internet ve API anahtarı gerekir. Para/TL kazancı, CBAM hesabı, sensör bağlantısı ve
 otomatik makine kontrolü kapsam dışıdır.</p>"""),
 ]

@@ -48,7 +48,7 @@ QPushButton#nlButton:hover {{ background: rgba(255, 255, 255, 0.28); }}
 QTabWidget::pane {{ border: none; background: {BG}; }}
 QTabBar {{ background: {BG}; }}
 QTabBar::tab {{
-    background: transparent; color: {MUTED}; padding: 9px 20px; margin-right: 2px;
+    background: transparent; color: {MUTED}; padding: 9px 16px; margin-right: 2px;
     border: none; border-bottom: 3px solid transparent; font-size: 10pt;
 }}
 QTabBar::tab:selected {{ color: {PRIMARY}; border-bottom: 3px solid {PRIMARY}; font-weight: 600; }}

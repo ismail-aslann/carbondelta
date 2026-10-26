@@ -88,6 +88,15 @@ build.bat
 üretir. `dist\CarbonDelta` klasörünün tamamı kopyalanarak Python kurulu olmayan bir bilgisayarda
 çalıştırılabilir. İlk açılışta matplotlib font önbelleği oluşturulduğu için açılış birkaç saniye uzun sürer.
 
+## Yıllık etki, tesis geneli ve rapor
+
+**Yıllık Etki** sekmesi (`engine/annual.py`, `desktop/annual_tab.py`) senaryodaki kaydırmayı seçilen yılın
+verisi olan her gününde kilitli formülle hesaplar ve toplar: yıllık değişim = (ΣS − ΣB) / ΣB × 100. Veri olmayan
+günler tahminle tamamlanmaz. Kapsam tek makine ya da **tesis geneli** (tüm kaydırılabilir makineler) olabilir.
+Ekran ayrıca kaydırılan enerjinin şebekedeki **yenilenebilir payını** (enerji ağırlıklı; standart → hedef),
+yıl boyu en temiz sabit hedef saati, aylık tablo/grafiği gösterir; **Delti** sonucu yorumlar (`annual_explain`),
+**PDF rapor** ve CSV dışa aktarılır. Senaryo sonuç kartında da yenilenebilir payı satırı vardır.
+
 ## Veri ekleme (yeni makine, yeni yıl, yeni katsayılar)
 
 Uygulamadaki **Veri** sekmesinden (ana sayfada *Veri yönetimi*) eklenir; EXE'yi yeniden üretmek gerekmez.
@@ -162,7 +171,7 @@ LLM_MODEL=                 # boş: gemini-flash-lite-latest / claude-opus-5-5
   gösterilmez, şablon metin gösterilir.
 - Gemini isteği `temperature = 0` ile gider. Güncel Claude modelleri `temperature` parametresini kabul
   etmediği için Claude isteği `temperature` göndermez; bunun yerine `effort: low` kullanılır.
-- 15 AI işlevinin istem ve şablonları: [shared/prompts/ai_functions.json](shared/prompts/ai_functions.json).
+- 16 AI işlevinin (talimattaki 15 + yıllık etki yorumu) istem ve şablonları: [shared/prompts/ai_functions.json](shared/prompts/ai_functions.json).
 
 ## Klasörler
 

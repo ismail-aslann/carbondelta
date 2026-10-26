@@ -396,3 +396,68 @@ def validate_nl(obj: dict, current) -> tuple[dict | None, str]:
     if not any(k in obj for k in ("asset_id", "s", "L", "t", "p")):
         return None, "Cümleden senaryo bilgisi çıkarılamadı."
     return merged, ""
+
+
+# ------------------------------------------------------------------ yıllık
+MONTH_NAMES = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim",
+               "Kasım", "Aralık"]
+
+
+def annual_explain(r, best, kind: str = "tCO2", parametric_kwh: float | None = None) -> AIRequest | None:
+    """r: engine.annual.AnnualResult (makine ya da tesis geneli); best: yıl boyu en temiz hedef sonucu."""
+    if r is None or r.days_ok == 0:
+        return None
+    what = "Tesis geneli (kaydırılabilir makineler)" if r.is_facility else data.machine(r.asset_id)["name"]
+    months = [m for m in r.months if m.days]
+    strongest = min(months, key=lambda m: m.delta_kg)
+    unit = "CO2" if kind == "tCO2" else "CO2-eşd"
+    payload = {
+        "kapsam": what,
+        "yil": r.year,
+        "emission_type": kind,
+        "standart_pencere": fmt.window(r.s, r.L),
+        "hedef_pencere": fmt.window(r.t, r.L),
+        "kaydirma_orani_yuzde": r.p * 100,
+        "hesaba_giren_gun": r.days_ok,
+        "toplam_gun": r.days_total,
+        "gun_birimi": "makine-gün" if r.is_facility else "gün",
+        "kaydirilan_enerji_kwh": r.shifted_kwh,
+        "standart_emisyon_kg": r.baseline_kg,
+        "secilen_emisyon_kg": r.scenario_kg,
+        "yillik_degisim_kg": r.delta_kg,
+        "yillik_degisim_ton": r.delta_kg / 1000,
+        "kaydirilan_yukte_degisim_yuzde": r.delta_pct,
+        "toplam_emisyon_icindeki_pay_yuzde": r.daily_delta_pct,
+        "azalan_gun": r.better_days,
+        "artan_gun": r.worse_days,
+        "yenilenebilir_pay_standart_yuzde": r.ren_source_pct,
+        "yenilenebilir_pay_hedef_yuzde": r.ren_target_pct,
+        "aylar": [{"ay": MONTH_NAMES[m.month - 1], "degisim_kg": m.delta_kg, "degisim_yuzde": m.delta_pct}
+                  for m in months],
+        "en_guclu_ay": MONTH_NAMES[strongest.month - 1],
+    }
+    if parametric_kwh is not None:
+        payload["parametrik_kwh_saat"] = parametric_kwh
+    if best is not None:
+        payload["yil_boyu_en_temiz_hedef"] = fmt.window(best.t, best.L)
+        payload["en_temiz_hedef_degisim_kg"] = best.delta_kg
+        payload["en_temiz_hedef_degisim_yuzde"] = best.delta_pct
+    if r.is_facility:
+        payload["makine_katkilari"] = [
+            {"makine": data.machine(x.asset_id)["name"], "degisim_kg": x.delta_kg, "degisim_yuzde": x.delta_pct}
+            for x in sorted(r.parts, key=lambda x: x.delta_kg) if x.days_ok]
+    kg = abs(r.delta_kg)
+    display = {
+        "what": what,
+        "year": str(r.year),
+        "days": str(r.days_ok),
+        "day_unit": "makine-günde" if r.is_facility else "günde",
+        "delta": (f"{fmt.num(kg / 1000)} t {unit}" if kg >= 1000 else f"{fmt.num(kg, 1)} kg {unit}"),
+        "verb": "azalırdı" if r.delta_kg <= 0 else "artardı",
+        "pct": fmt.pct(r.delta_pct),
+        "ren_src": "—" if r.ren_source_pct is None else f"%{fmt.num(r.ren_source_pct, 1)}",
+        "ren_tgt": "—" if r.ren_target_pct is None else f"%{fmt.num(r.ren_target_pct, 1)}",
+        "best_month": MONTH_NAMES[strongest.month - 1],
+        "best_target": fmt.window(best.t, best.L) if best is not None else "—",
+    }
+    return _req("annual_explain", payload, display)

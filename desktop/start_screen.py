@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 
 from desktop import delti, fmt
 from desktop.resources import resource_path
+from engine.appinfo import APP_NAME, DEFAULT_APP_NAME
 
 BG_CENTER = "#0d4a3d"
 BG_EDGE = "#062720"
@@ -35,6 +36,8 @@ _SVG = {
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
     "db": '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/>'
           '<path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+    "year": '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'
+            '<path d="M7 17v-3M11 17v-5M15 17v-2"/>',
     "play": None,
 }
 
@@ -42,6 +45,7 @@ _SVG = {
 ITEMS = [
     ("new", "Yeni senaryo", "Yük kaydırmayı hesapla", "chart"),
     ("best", "En temiz saat", "Otomatik öneri", "search"),
+    ("annual", "Yıllık etki", "Bir yılda kaç ton CO₂", "year"),
     ("nl", "Delti'ye sor", "Yazarak senaryo kur", "delti"),
     ("history", "Geçmiş", "Kayıtlı senaryolar", "clock"),
     ("calc", "Hesap dökümü", "Formül ve tablolar", "doc"),
@@ -155,6 +159,12 @@ class StartScreen(QWidget):
         tagline.setObjectName("startTagline")
         tagline.setAlignment(Qt.AlignCenter)
         col.addWidget(tagline, 0, Qt.AlignHCenter)
+        if APP_NAME != DEFAULT_APP_NAME:
+            # Deneme/geliştirme kopyası ana uygulamayla karışmasın.
+            badge = QLabel(APP_NAME.replace(DEFAULT_APP_NAME, "").strip().upper() + " SÜRÜMÜ")
+            badge.setStyleSheet(f"color: #1b1b1b; background: #ffd166; border-radius: 9px; padding: 2px 12px;"
+                                " font-size: 8.5pt; font-weight: 700; letter-spacing: 1px;")
+            col.addWidget(badge, 0, Qt.AlignHCenter)
         col.addSpacing(12)
 
         # Son senaryo kartı
@@ -289,7 +299,7 @@ class StartScreen(QWidget):
             self._select(self._sel - 1)
         elif key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
             self._activate()
-        elif Qt.Key_1 <= key < Qt.Key_1 + len(ITEMS):
+        elif Qt.Key_1 <= key < Qt.Key_1 + min(len(ITEMS), 9):
             self._select(key - Qt.Key_1)
             self._activate()
         else:
