@@ -1,7 +1,8 @@
 """Arayüz teması: renkler ve Qt stil sayfası (tek kaynak)."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QFrame, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from desktop.resources import resource_path
 
@@ -188,6 +189,24 @@ def qss() -> str:
         UP=_url("chevron_up.png"), DOWN=_url("chevron_down.png"),
         UP_OFF=_url("chevron_up_disabled.png"), DOWN_OFF=_url("chevron_down_disabled.png"),
     )
+
+
+def scroll_page(owner: QWidget, min_height: int) -> QVBoxLayout:
+    """Sekme içeriğini dikey kaydırılabilir yapar: alan yetmezse içerik ezilmez, kaydırma çubuğu çıkar.
+
+    Dönen düzen içeriğin kök düzenidir (sekme kendi düzenini bunun üzerine kurar).
+    """
+    outer = QVBoxLayout(owner)
+    outer.setContentsMargins(0, 0, 0, 0)
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setFrameShape(QFrame.NoFrame)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    content = QWidget()
+    content.setMinimumHeight(min_height)
+    scroll.setWidget(content)
+    outer.addWidget(scroll)
+    return QVBoxLayout(content)
 
 
 def card(title: str | None = None, *, margins: tuple[int, int, int, int] = (14, 12, 14, 12),

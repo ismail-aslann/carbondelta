@@ -58,10 +58,15 @@ class _LoadChart(FigureCanvasQTAgg):
             hours = list(range(24))
             ax.bar([h - 0.2 for h in hours], p.before, width=0.4, color="#c9d3dd", label="Plan öncesi")
             ax.bar([h + 0.2 for h in hours], p.after, width=0.4, color="#1f9254", alpha=0.85, label="Plan sonrası")
-            if p.peak_limit:
+            top = max(max(p.before), max(p.after), 1.0) * 1.18
+            if p.peak_limit and p.peak_limit <= top:
                 ax.axhline(p.peak_limit, color="#d03c3c", linewidth=1, linestyle="--")
                 ax.text(23.6, p.peak_limit, " sınır", fontsize=7.5, color="#d03c3c", va="bottom", ha="right")
-            moved = sum(max(0.0, b - a) for b, a in zip(p.before, p.after))
+            elif p.peak_limit:
+                ax.text(0.99, 0.97, f"sınır {fmt.num(p.peak_limit, 0)} kWh (grafik dışında)", transform=ax.transAxes,
+                        fontsize=7.5, color="#d03c3c", va="top", ha="right")
+            ax.set_ylim(0, top)
+            moved = p.shifted_kwh if p.planned_count else 0.0   # özetteki taşınan enerjiyle aynı
             msg = (f"Taşınan enerji: {fmt.num(moved, 1)} kWh" if moved > 1e-9
                    else "Plan değişiklik önermedi")
             ax.text(0.01, 0.97, msg, transform=ax.transAxes, fontsize=8, va="top",
@@ -109,7 +114,7 @@ class PlanTab(QWidget):
         self._timer.setInterval(80)
         self._timer.timeout.connect(self.recompute)
 
-        root = QVBoxLayout(self)
+        root = theme.scroll_page(self, 600)
         root.setContentsMargins(0, 8, 0, 0)
         root.setSpacing(10)
 

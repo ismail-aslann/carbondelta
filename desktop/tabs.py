@@ -374,7 +374,7 @@ class HistoryTab(QWidget):
         names = {m["id"]: m["name"] for m in data.machines()}
         for n, h in enumerate(rows):
             mode = "Parametrik" if h["mode"] == "parametric" else "Ölçülen"
-            vals = [fmt.datetime(h["created_at"]), names.get(h["asset_id"], h["asset_id"]),
+            vals = [fmt.datetime(h["created_at"]), names.get(h["asset_id"], "Silinmiş makine"),
                     fmt.date(h["date"]), fmt.window(h["s"], h["L"]), fmt.window(h["t"], h["L"]),
                     f"%{fmt.num(h['p'] * 100, 0)}", "tCO2-eşd" if h["ci_kind"] == "tCO2esd" else "tCO2",
                     mode, STATUS_LABELS.get(h["status"], h["status"]),

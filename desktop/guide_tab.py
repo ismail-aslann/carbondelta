@@ -30,6 +30,8 @@ standart ve hedef saatleri girin; sonuç kartı anında güncellenir.</p>"""),
 <li><b>Son senaryo / Demo senaryo kartı:</b> En son kaydettiğiniz senaryoyu (yoksa demo senaryoyu) tek adımda açar.</li>
 <li><b>Yeni senaryo:</b> Senaryo ekranını temiz bir başlangıçla açar (kısıtlı saatler temizlenir, oran %100).</li>
 <li><b>En temiz saat:</b> Seçtiğiniz yük için günün tüm hedef saatlerini emisyona göre sıralar.</li>
+<li><b>Yıllık etki:</b> Aynı kaydırmanın bir yıldaki toplam etkisi (makine ya da tesis geneli).</li>
+<li><b>Tesis planı:</b> Bir günde her makine için ayrı ayrı en temiz saat ve tesis tepe yükü.</li>
 <li><b>Delti'ye sor:</b> Ne yapmak istediğinizi günlük dille yazarsınız.</li>
 <li><b>Geçmiş</b>, <b>Hesap dökümü</b>, <b>Veri yönetimi</b>, <b>Kullanma kılavuzu</b>, <b>Kaynaklar</b>,
 <b>İletişim</b>: ilgili ekranları açar.</li>
@@ -169,7 +171,7 @@ değişim = (S − B) / B × 100; günlük etki = (S − B) / günlük toplam em
     ("data", "Veri yönetimi", f"""
 <p>Yeni makine, yeni yıl ya da yeni emisyon katsayıları <b>Veri</b> sekmesinden eklenir; uygulamayı yeniden
 kurmak gerekmez. Varsayılan 2025 verisi her zaman yerinde kalır. Eklenen her şey ayrı bir <b>veri paketi</b>
-olarak <i>%APPDATA%\CarbonDelta\veri</i> klasöründe tutulur.</p>
+olarak <i>%APPDATA%\\CarbonDelta\\veri</i> klasöründe tutulur.</p>
 <ul>
 <li><b>Makine ekle:</b> Saatlik kWh dosyası seçin (CSV ya da Excel; sütunlar <i>Tarih, Saat, kWh</i>; ondalık
 virgül olabilir). Makine adını, türünü, kaydırılabilir olup olmadığını ve veri türünü (<i>örnek yük</i> ya da
