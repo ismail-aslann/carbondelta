@@ -148,6 +148,20 @@ def ci_24(date: str, kind: str = "tCO2") -> list[float]:
     return [float(row[col]) for row in _epias()[date]]
 
 
+def ci_fossil_24(date: str, kind: str = "tCO2") -> list[float]:
+    """Duyarlılık için fosil marjinal yoğunluk: o saatte yalnızca fosil santrallerin ortalama yoğunluğu.
+
+    Yenilenebilir kaynakların emisyon faktörü sıfır olduğundan CI_fosil = CI / fosil payı.
+    Kaydırılan yükü fosil santrallerin karşıladığı varsayımına karşılık gelir (fosil üretim yoksa 0).
+    """
+    ci = ci_24(date, kind)
+    out = []
+    for h, recs in enumerate(_epias()[date]):
+        frac = float(recs["Fosil_Payi_Yuzde"]) / 100
+        out.append(ci[h] / frac if frac > 0 else 0.0)
+    return out
+
+
 def mix_at(date: str, hour: int) -> dict:
     row = _epias()[date][hour]
     return {

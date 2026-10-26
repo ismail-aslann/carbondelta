@@ -7,6 +7,8 @@ Durumu "ok" olmayan günler (yük yok, kısıtlı vb.) toplama girmez ve ayrıca
 Yenilenebilir pay: kaydırılan enerjinin, tüketildiği saatteki şebeke yenilenebilir payıyla ağırlıklı
 ortalaması (konum bazlı gösterge; standart ve hedef pencere için ayrı).
 Tesis geneli (ALL): aynı kaydırma tüm kaydırılabilir makinelere uygulanır, sonuçlar toplanır.
+Fosil marjinal duyarlılık: aynı günler ve pencereler, saatlik yoğunluk yerine yalnızca fosil santrallerin
+yoğunluğu (data.ci_fossil_24) ile; ana sonuca alternatif bir alt sınır göstergesidir.
 """
 from __future__ import annotations
 
@@ -58,6 +60,16 @@ class AnnualResult:
     ren_source_kwh: float = 0.0         # kaydırılan enerjinin standart pencerede yenilenebilir karşılığı
     ren_target_kwh: float = 0.0         # aynı enerjinin hedef pencerede yenilenebilir karşılığı
     parts: list[AnnualResult] = field(default_factory=list)   # tesis genelinde makine sonuçları
+    fossil_baseline_kg: float = 0.0     # fosil marjinal duyarlılık: ΣB_fosil
+    fossil_scenario_kg: float = 0.0     # ΣS_fosil
+
+    @property
+    def fossil_delta_kg(self) -> float:
+        return self.fossil_scenario_kg - self.fossil_baseline_kg
+
+    @property
+    def fossil_delta_pct(self) -> float | None:
+        return self.fossil_delta_kg / self.fossil_baseline_kg * 100 if self.fossil_baseline_kg > 0 else None
 
     @property
     def is_facility(self) -> bool:
@@ -94,13 +106,14 @@ def years_for(asset_id: str) -> list[int]:
 
 
 def year_series(asset_id: str, year: int, kind: str, parametric_kwh: float | None = None) -> list[tuple]:
-    """(tarih, yük, CI, yenilenebilir %) — parametrik modda yük her saat sabit kWh."""
+    """(tarih, yük, CI, yenilenebilir %, fosil marjinal CI) — parametrik modda yük her saat sabit kWh."""
     prefix = f"{year:04d}-"
     out = []
     for d in data.days_for(asset_id):
         if d.startswith(prefix):
             load, ci = data.scenario_series(asset_id, d, kind, parametric_kwh)
-            out.append((d, load, ci, [data.mix_at(d, h)["renewable_pct"] for h in range(HOURS)]))
+            out.append((d, load, ci, [data.mix_at(d, h)["renewable_pct"] for h in range(HOURS)],
+                        data.ci_fossil_24(d, kind)))
     return out
 
 
@@ -110,7 +123,7 @@ def annual_impact(asset_id: str, year: int, s: int, L: int, t: int, p: float,
     shiftable = data.machine(asset_id)["shiftable"]
     days = series if series is not None else year_series(asset_id, year, kind)
     out = AnnualResult(asset_id, year, s, L, t, p, days_total=len(days))
-    for date, load, ci, ren in days:
+    for date, load, ci, ren, cif in days:
         r = simulate(load, ci, s, L, t, p, set(restricted), shiftable)
         out.status_counts[r.status] = out.status_counts.get(r.status, 0) + 1
         if r.status != OK:
@@ -124,6 +137,8 @@ def annual_impact(asset_id: str, year: int, s: int, L: int, t: int, p: float,
             e = p * load[s + i]
             out.ren_source_kwh += e * ren[s + i] / 100
             out.ren_target_kwh += e * ren[t + i] / 100
+            out.fossil_baseline_kg += e * cif[s + i]
+            out.fossil_scenario_kg += e * cif[t + i]
         m = out.months[int(date[5:7]) - 1]
         m.days += 1
         m.baseline_kg += r.baseline_kg
@@ -170,7 +185,7 @@ def facility_impact(year: int, s: int, L: int, t: int, p: float, restricted: set
         for k, v in r.status_counts.items():
             out.status_counts[k] = out.status_counts.get(k, 0) + v
         for name in ("shifted_kwh", "baseline_kg", "scenario_kg", "daily_kg", "ren_source_kwh", "ren_target_kwh",
-                     "better_days", "worse_days"):
+                     "better_days", "worse_days", "fossil_baseline_kg", "fossil_scenario_kg"):
             setattr(out, name, getattr(out, name) + getattr(r, name))
         for mo, mr in zip(out.months, r.months):
             mo.days += mr.days

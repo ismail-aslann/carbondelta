@@ -214,7 +214,7 @@ class CalcTab(QWidget):
         fcard, flay = theme.card("Hesap nasıl yapılıyor?")
         formula = QTextBrowser()
         formula.setHtml(FORMULA_HTML)
-        formula.setMinimumHeight(250)
+        formula.setMinimumHeight(190)
         flay.addWidget(formula)
         rl.addWidget(fcard, 6)
 
