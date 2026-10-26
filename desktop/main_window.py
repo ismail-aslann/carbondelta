@@ -99,7 +99,7 @@ class Computation:
     result: Result
 
 
-def status_message(r: Result, restricted: set[int]) -> str:
+def status_message(r: Result, restricted: set[int], p: float | None = None) -> str:
     """ok dışındaki durumlar için kullanıcıya gösterilen Türkçe açıklama."""
     if r.status == "non_shiftable":
         return NON_SHIFTABLE_TEXT
@@ -112,6 +112,8 @@ def status_message(r: Result, restricted: set[int]) -> str:
     if r.status == "same_window":
         return "Standart ve seçilen pencere aynı; emisyon değişmez."
     if r.status == "no_load":
+        if p == 0:
+            return "Kaydırma oranı %0: taşınacak enerji yok; yüzde hesaplanamaz. Oranı artırın."
         return "Standart pencerede yük yok (0 kWh); yüzde hesaplanamaz."
     return ""
 
@@ -763,7 +765,7 @@ class MainWindow(QMainWindow):
             color = MUTED
             verdict_color = MUTED if r.status == "same_window" else BAD
             self.delta_label.setText(fmt.pct(0.0) if r.status == "same_window" else "—")
-            self.verdict_label.setText(status_message(r, set(c.inputs.restricted)))
+            self.verdict_label.setText(status_message(r, set(c.inputs.restricted), c.inputs.p))
         self.delta_label.setStyleSheet(f"color: {color};")
         self.verdict_label.setStyleSheet(f"color: {verdict_color}; font-weight: 600;")
         text = result_explanation(c)
@@ -899,7 +901,11 @@ class MainWindow(QMainWindow):
 
     def _open_app(self, tab: QWidget) -> None:
         self.pages.setCurrentIndex(1)
-        self.tabs.setCurrentWidget(tab)
+        if self.tabs.currentWidget() is tab:
+            # Sekme zaten açıksa currentChanged gelmez; Senaryo'daki yeni değerleri yine de alsın.
+            self._on_tab_changed(self.tabs.currentIndex())
+        else:
+            self.tabs.setCurrentWidget(tab)
         QTimer.singleShot(0, self._focus_current_tab)
 
     def _on_start_action(self, key: str) -> None:
@@ -1068,7 +1074,7 @@ class MainWindow(QMainWindow):
         def explain(m, mg, r):
             c = Computation(ScenarioInputs(mg["asset_id"], mg["date"], mg["s"], mg["L"], mg["t"], mg["p"]),
                             m, [], [], r)
-            return result_explanation(c) or status_message(r, set())
+            return result_explanation(c) or status_message(r, set(), mg["p"])
 
         # Anlaşılan senaryo hemen Senaryo sekmesine uygulanır (önizleme ayrıca gösterilir).
         self.set_inputs(ScenarioInputs(merged["asset_id"], merged["date"], merged["s"], merged["L"],
@@ -1132,7 +1138,7 @@ class MainWindow(QMainWindow):
         c = self.current
         reqs = ai_context.auto_requests(c)
         if not reqs:
-            self._show_local("Durum", status_message(c.result, set(c.inputs.restricted)))
+            self._show_local("Durum", status_message(c.result, set(c.inputs.restricted), c.inputs.p))
             return
         if not self.ai.online:
             self._ai_debounce.stop()
@@ -1155,7 +1161,7 @@ class MainWindow(QMainWindow):
         req = builder(self.current)
         if req is None:
             self._show_local("Açıklama", "Bu işlev mevcut senaryo durumunda kullanılamaz "
-                             f"({status_message(self.current.result, set(self.current.inputs.restricted)) or 'hesap yok'}).")
+                             f"({status_message(self.current.result, set(self.current.inputs.restricted), self.current.inputs.p) or 'hesap yok'}).")
             return
         self._submit_batch([req])
 

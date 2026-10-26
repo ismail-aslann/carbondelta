@@ -97,6 +97,18 @@ Ekran ayrıca kaydırılan enerjinin şebekedeki **yenilenebilir payını** (ene
 yıl boyu en temiz sabit hedef saati, aylık tablo/grafiği gösterir; **Delti** sonucu yorumlar (`annual_explain`),
 **PDF rapor** ve CSV dışa aktarılır. Senaryo sonuç kartında da yenilenebilir payı satırı vardır.
 
+## Tesis planı ve fosil marjinal duyarlılık
+
+**Tesis Planı** sekmesi (`engine/plan.py`, `desktop/plan_tab.py`) seçilen günde her kaydırılabilir makine için
+ayrı ayrı en temiz hedef pencereyi bulur. Standart pencere *Otomatik* (makinenin o gün en çok emisyon ürettiği
+pencere) ya da *Elle* seçilir. Tesis saatlik yükü plan öncesi/sonrası gösterilir; isteğe bağlı **tepe yük sınırı**
+verilirse planlayıcı makineleri azaltım potansiyeline göre sırayla yerleştirip sınırı aşmayan en temiz pencereyi seçer.
+
+**Fosil marjinal duyarlılık:** Ana sonuç saatlik ortalama yoğunlukla hesaplanır. Duyarlılık değeri, kaydırılan yükü
+yalnızca fosil santrallerin karşıladığı varsayımıyla aynı hesabı yapar: CI_fosil(h) = CI(h) / fosil payı(h)
+(`data.ci_fossil_24`). Senaryo kartında, yıllık etkide, PDF/CSV'de ve tesis planında gösterilir; gerçek etki
+büyük olasılıkla iki değer arasındadır.
+
 ## Veri ekleme (yeni makine, yeni yıl, yeni katsayılar)
 
 Uygulamadaki **Veri** sekmesinden (ana sayfada *Veri yönetimi*) eklenir; EXE'yi yeniden üretmek gerekmez.
@@ -171,7 +183,29 @@ LLM_MODEL=                 # boş: gemini-flash-lite-latest / claude-opus-5-5
   gösterilmez, şablon metin gösterilir.
 - Gemini isteği `temperature = 0` ile gider. Güncel Claude modelleri `temperature` parametresini kabul
   etmediği için Claude isteği `temperature` göndermez; bunun yerine `effort: low` kullanılır.
-- 16 AI işlevinin (talimattaki 15 + yıllık etki yorumu) istem ve şablonları: [shared/prompts/ai_functions.json](shared/prompts/ai_functions.json).
+- 15 AI işlevinin istem ve şablonları: [shared/prompts/ai_functions.json](shared/prompts/ai_functions.json).
+
+## Mobil (Android APK)
+
+`mobile/` klasörü, bu masaüstü uygulamasının (EXE 1.1.0) Flutter/Dart ile yazılmış Android karşılığıdır.
+Hiçbir özellik çıkarılmadan taşındı: Ana sayfa, Senaryo, En Temiz Saat, Delti'ye Sor, Hesabı Göster,
+Geçmiş, Veri yönetimi, Kılavuz, Kaynaklar, İletişim ve Delti ayarları.
+
+- Hesap motoru (`mobile/lib/engine/`) `engine/*.py` dosyalarının satır satır çevirisidir; formül `shared/FORMUL.md`.
+- Veri ve AI şablonları `shared/assets` ve `shared/prompts` ile birebir aynıdır (`mobile/assets/shared`).
+- **Golden test:** `shared/golden/vectors.json` içindeki 30 senaryo Dart motorunda 1e-9 toleransla
+  aynı sonucu verir (`mobile/test/golden_test.dart`). Toplam 48 test.
+- Demo: comp_b, 15.07.2025, 03:00 → 18:00, %100 → **−15,62 %** (EXE ile aynı).
+- Delti anahtarı telefonda Android Keystore'da şifreli saklanır.
+
+```powershell
+cd mobile
+flutter pub get
+flutter test                  # 48 test (30 golden senaryo dahil)
+flutter build apk --release   # build\app\outputs\flutter-apk\app-release.apk
+```
+
+Kurulabilir APK: GitHub **Releases** sayfasında `CarbonDelta_1.1.0.apk`. Ayrıntılar: [mobile/README.md](mobile/README.md).
 
 ## Klasörler
 
@@ -180,6 +214,7 @@ data_build/   ham veriden asset üretimi
 engine/       hesap motoru (core.py saf Python, pandas yok) + testler
 desktop/      PySide6 arayüzü (formül içermez, engine'i çağırır)
 shared/       FORMUL.md, assets/, golden/, prompts/ — mobil (Dart) sürüm de bunları kullanır
+mobile/       Flutter/Dart Android uygulaması (APK); hesap motoru engine/ ile birebir
 excel/        dogrulama.xlsx
 ```
 

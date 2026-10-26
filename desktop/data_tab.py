@@ -493,7 +493,9 @@ class DataTab(QWidget):
         errors = data.package_errors()
         for p in pk.list_packages():
             if p.id in errors:
-                item = QListWidgetItem(f"{p.name}\n⚠ Okunamadı — paket atlandı\n{errors[p.id][:60]}")
+                item = QListWidgetItem(f"{p.name}\n⚠ Okunamadı — paket atlandı\n"
+                                       "Dosyaları eksik ya da bozuk; silip yeniden ekleyin.")
+                item.setToolTip(f"Ayrıntı: {errors[p.id]}")
                 item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
                 item.setForeground(QColor(theme.BAD))
                 item.setData(Qt.UserRole, p.id)

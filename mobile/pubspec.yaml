@@ -1,0 +1,39 @@
+name: carbondelta_mobile
+description: "CarbonDelta - Emisyon Potansiyeli Karar Destek (Android). EXE 1.1.0'ın mobil karşılığı."
+publish_to: 'none'
+
+version: 1.1.0+2
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  sqflite: ^2.3.0
+  path: ^1.9.0
+  path_provider: ^2.1.0
+  share_plus: ^11.0.0
+  excel: ^4.0.0
+  flutter_svg: ^2.0.0
+  http: ^1.6.0
+  flutter_secure_storage: ^10.3.4
+  url_launcher: ^6.3.3
+  file_selector: ^1.1.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon.png
+    - assets/shared/epias_2025.csv
+    - assets/shared/loads_hourly.csv
+    - assets/shared/machines.json
+    - assets/shared/etkb_2023.csv
+    - assets/shared/prompts/ai_functions.json

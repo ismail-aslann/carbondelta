@@ -103,3 +103,13 @@ def test_rule_parser_knows_user_machines(pkg_dir, tmp_path):
     got = parse_nl_rule("Kompresör (Hat 2)'yi 3'ten 18'e al")
     assert got["asset_id"] == new_id and got["s"] == 3 and got["t"] == 18   # "Hat 2"deki 2 saat sanılmaz
     assert parse_nl_rule("Kompresörü 3'ten 18'e al")["asset_id"] == "comp_b"
+
+
+def test_zero_ratio_message_names_the_ratio():
+    from desktop.main_window import status_message
+    from engine.core import simulate
+    load, ci = data.scenario_series("p_i", "2025-07-15")
+    r = simulate(load, ci, 3, 3, 19, 0.0)
+    assert r.status == "no_load"
+    assert "oranı %0" in status_message(r, set(), 0.0)
+    assert "yük yok" in status_message(r, set(), 1.0)

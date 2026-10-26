@@ -151,7 +151,7 @@ class AnnualTab(QWidget):
         self._timer.setInterval(80)
         self._timer.timeout.connect(self.recompute)
 
-        root = QVBoxLayout(self)
+        root = theme.scroll_page(self, 640)
         root.setContentsMargins(0, 8, 0, 0)
         root.setSpacing(10)
 
@@ -272,8 +272,8 @@ class AnnualTab(QWidget):
         ccard, cl = theme.card("Aylık emisyon değişimi")
         self.chart = _MonthChart()
         cl.addWidget(self.chart, 1)
-        cl.addWidget(theme.muted("Yeşil çubuk o ay emisyonun düştüğünü, kırmızı arttığını gösterir. "
-                                 "Verisi olmayan aylar boş kalır.", wrap=True))
+        self.chart.setToolTip("Yeşil çubuk o ay emisyonun düştüğünü, kırmızı arttığını gösterir. "
+                              "Verisi olmayan aylar boş kalır.")
         body.addWidget(ccard, 2)
         root.addLayout(body, 1)
 
@@ -284,7 +284,8 @@ class AnnualTab(QWidget):
         current = self.machine.currentData()
         self._loading = True
         self.machine.clear()
-        self.machine.addItem(FACILITY_LABEL, annual.ALL)
+        self.machine.addItem("Tesis geneli (tümü)", annual.ALL)
+        self.machine.setItemData(0, FACILITY_LABEL, Qt.ToolTipRole)
         for m in data.machines():
             if m["shiftable"]:
                 self.machine.addItem(m["name"], m["id"])
@@ -657,6 +658,8 @@ def export_annual_pdf(path: Path | str, r: annual.AnnualResult, best: annual.Ann
                       restricted: set[int], kind: str, param: float | None, chart_png: bytes,
                       ai_text: str = "", ai_source: str = "") -> None:
     """A4 PDF rapor (Qt ile; ek bağımlılık yok)."""
+    # Eski dosya başka programda açıksa silme hatası (OSError) burada yükselir; QPdfWriter sessizce başarısız olurdu.
+    Path(path).unlink(missing_ok=True)
     writer = QPdfWriter(str(path))
     writer.setPageSize(QPageSize(QPageSize.A4))
     writer.setPageMargins(QMarginsF(14, 12, 14, 12), QPageLayout.Millimeter)
