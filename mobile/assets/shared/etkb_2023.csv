@@ -1,0 +1,16 @@
+Yakit_Turu_EPIAS_Sutunu,ETKB_PDF_Adi,Emisyon_Faktoru_tCO2_MWh,Emisyon_Faktoru_tCO2esd_MWh,Kategori
+Linyit,Linyit,1.122,1.133,Fosil
+Taş Kömür,Taş Kömürü,1.045,1.05,Fosil
+Asfaltit Kömür,Asfaltit,1.078,1.083,Fosil
+İthal Kömür,İthal Kömür,0.8,0.803,Fosil
+Doğal Gaz,Doğalgaz,0.4,0.405,Fosil
+Fuel Oil,Fuel Oil,1.24,1.241,Fosil
+Nafta,Motorin / Fuel Oil Türevi (2025 Üretimi 0),0.862,0.863,Fosil
+LNG,Doğalgaz / LNG (2025 Üretimi 0),0.4,0.405,Fosil
+Barajlı,Hidrolik (Barajlı),0.0,0.0,Yenilenebilir / Sıfır Doğrudan Yakıt Emisyonu
+Akarsu,Hidrolik (Akarsu),0.0,0.0,Yenilenebilir / Sıfır Doğrudan Yakıt Emisyonu
+Rüzgar,Rüzgar,0.0,0.0,Yenilenebilir / Sıfır Doğrudan Yakıt Emisyonu
+Güneş,Güneş,0.0,0.0,Yenilenebilir / Sıfır Doğrudan Yakıt Emisyonu
+Jeotermal,Jeotermal,0.0,0.0,Yenilenebilir / Sıfır Doğrudan Yakıt Emisyonu
+Biyokütle,Biyokütle,0.0,0.0,Yenilenebilir / Sıfır Doğrudan Yakıt Emisyonu
+Atık Isı,Atık Isı,0.0,0.0,Yenilenebilir / Sıfır Doğrudan Yakıt Emisyonu
