@@ -149,3 +149,25 @@ def test_chart_draws_shifted_energy(s, L, t, p):
     assert all(ch._in[h] == 0 for h in range(24) if not t <= h < t + L)
     ch.update_chart(ci, load, s, L, t, set(), "ok", -1.0, "tCO2", 0.0)
     assert sum(ch._in) == 0                       # oran %0: grafikte taşıma yok
+
+
+def test_best_tab_uses_kind_param_and_ratio():
+    import os as _os
+    _os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance() or QApplication([])  # noqa: F841
+    from desktop.main_window import HourSpinBox
+    from desktop.tools_tabs import BestWindowTab
+    t = BestWindowTab(HourSpinBox)
+    t.load_inputs("comp_b", "2025-07-15", 3, 3, 1.0, [], "tCO2")
+    full = t._rows[0][1]
+    t.p.setValue(50)
+    t.recompute()
+    half = t._rows[0][1]
+    assert half.delta_pct == pytest.approx(full.delta_pct)            # yüzde orandan bağımsız
+    assert half.scenario_kg == pytest.approx(full.scenario_kg / 2)    # kg oranla değişir
+    t.load_inputs("comp_b", "2025-07-15", 3, 3, 1.0, [], "tCO2esd", 10.0)
+    load, ci = data.scenario_series("comp_b", "2025-07-15", "tCO2esd", 10.0)
+    from engine.best_window import best_window
+    bt, br = best_window(load, ci, 3, 3, 1.0)
+    assert t._rows[0][0] == bt and t._rows[0][1].scenario_kg == pytest.approx(br.scenario_kg)

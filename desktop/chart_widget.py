@@ -12,6 +12,7 @@ warnings.filterwarnings("ignore", message="constrained_layout not applied")
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
+from PySide6.QtCore import QSize  # noqa: E402
 from PySide6.QtGui import QCursor  # noqa: E402
 from PySide6.QtWidgets import QToolTip  # noqa: E402
 
@@ -33,7 +34,7 @@ class ChartWidget(FigureCanvasQTAgg):
         self.figure = Figure(figsize=(7, 3.2), dpi=100, layout="constrained", facecolor="white")
         super().__init__(self.figure)
         self.setParent(parent)
-        self.setMinimumHeight(190)
+        self.setMinimumHeight(160)
         self.ax_ci = self.figure.add_subplot(111)
         self.ax_load = self.ax_ci.twinx()
         self._ci: list[float] = []
@@ -42,6 +43,10 @@ class ChartWidget(FigureCanvasQTAgg):
         self._hover_hour: int | None = None
         self.mpl_connect("motion_notify_event", self._on_move)
         self.mpl_connect("axes_leave_event", lambda _e: QToolTip.hideText())
+
+    def sizeHint(self) -> QSize:
+        # Kaydırılabilir sağ sütunda grafik boş alanı esneyerek doldurur; tercih edilen yükseklik küçük tutulur.
+        return QSize(700, 200)
 
     def update_chart(self, ci: list[float], load: list[float], s: int, L: int, t: int,
                      restricted: set[int], status: str, delta_pct: float | None,

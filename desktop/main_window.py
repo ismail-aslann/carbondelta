@@ -322,7 +322,10 @@ class MainWindow(QMainWindow):
         scroll.setWidget(self._build_inputs())
         lay.addWidget(scroll)
 
-        right = QVBoxLayout()
+        # Sağ sütun: alan yetmezse (küçük ekran) sonuç kartı ezilmesin, sütun kaydırılabilsin.
+        right_w = QWidget()
+        right = QVBoxLayout(right_w)
+        right.setContentsMargins(0, 0, 0, 0)
         right.setSpacing(10)
         chart_card, chart_lay = theme.card(margins=(6, 6, 6, 4))
         self.chart = ChartWidget()
@@ -331,10 +334,17 @@ class MainWindow(QMainWindow):
 
         bottom = QHBoxLayout()
         bottom.setSpacing(10)
-        bottom.addWidget(self._build_result_card(), 4)
+        result_card = self._build_result_card()
+        bottom.addWidget(result_card, 4)
         bottom.addWidget(self._build_ai_box(), 6)
         right.addLayout(bottom, 0)
-        lay.addLayout(right, 1)
+        right_w.setMinimumHeight(result_card.sizeHint().height() + 210)
+        self.right_scroll = QScrollArea()
+        self.right_scroll.setWidgetResizable(True)
+        self.right_scroll.setFrameShape(QFrame.NoFrame)
+        self.right_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.right_scroll.setWidget(right_w)
+        lay.addWidget(self.right_scroll, 1)
         return tab
 
     def _form(self, parent_lay: QVBoxLayout) -> QFormLayout:
@@ -986,7 +996,8 @@ class MainWindow(QMainWindow):
     def _on_tab_changed(self, _index: int) -> None:
         if self.tabs.currentWidget() is self.best_tab:
             i = self.inputs()
-            self.best_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.p, i.restricted)
+            self.best_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.p, i.restricted, i.ci_kind,
+                                      i.param_kwh if i.parametric else None)
         elif self.tabs.currentWidget() is self.annual_tab:
             i = self.inputs()
             self.annual_tab.load_inputs(i.asset_id, i.date, i.s, i.L, i.t, i.p, i.restricted, i.ci_kind,
