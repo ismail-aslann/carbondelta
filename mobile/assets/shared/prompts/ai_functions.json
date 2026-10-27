@@ -109,6 +109,13 @@
    "system": "Sunuma veya rapora kopyalanacak resmî bir metin yaz: YALNIZCA TEK paragraf ve en fazla 2 cümle. Kullanıcıya hitap etme (\"siz\" kullanma), karar/tavsiye cümlesi ekleme, üçüncü şahıs ve edilgen çatı kullan. Bu işlevde 4-5 cümle kuralı geçerli değildir.",
    "user_template": "Senaryo (JSON):\n{payload_json}",
    "fallback_template": "{date} tarihli örnek yükte {machine} makinesinin %{ratio_pct} yükünün {source_window} yerine {target_window} aralığında çalıştırılması, pencere emisyonunda {delta_pct} değişim potansiyeli göstermektedir (EPİAŞ 2025 saatlik karbon yoğunluğu)."
+  },
+  {
+   "id": "annual_explain",
+   "title": "Yıllık etki yorumu",
+   "system": "Bir yük kaydırma senaryosunun bir yıl boyunca her gün uygulanmasının sonucunu yorumla. Toplam emisyon değişimini (kg ya da ton; verilen alanı kullan), kaydırılan yükteki yüzde değişimi, kaç günde azalma olduğunu, etkinin en güçlü olduğu ayı ve kaydırılan enerjinin yenilenebilir kaynaklı payındaki değişimi söyle. Yıl boyu en temiz hedef pencere seçilenden farklıysa onu öner. Fosil marjinal duyarlılık değerini 'daha temkinli bir alt sınır' olarak tek cümleyle belirt. Tesis geneli ise makinelerin katkısını büyükten küçüğe kısaca sırala. 3-5 cümle; yalnızca verilen sayıları kullan, tahmin veya yıla tamamlama yapma.",
+   "user_template": "Yıllık sonuç (JSON):\n{payload_json}",
+   "fallback_template": "{what}: bu kaydırma {year} yılında verisi olan {days} {day_unit} uygulansaydı toplam emisyon {delta} {verb} ({pct}). Kaydırılan enerjinin yenilenebilir kaynaklı payı {ren_src} yerine {ren_tgt} olurdu. Etkinin en güçlü olduğu ay {best_month}. Yıl boyu en temiz hedef pencere: {best_target}."
   }
  ],
  "glossary": {

@@ -110,3 +110,37 @@ Map<String, Object?> seasonProfile(DataStore data, List<int> sourceHours, List<i
     'worst_month_diff_pct': worst['diff_pct'],
   };
 }
+
+/// Kaydırılan enerjinin, tüketildiği saatteki şebeke yenilenebilir payıyla ağırlıklı ortalaması (%)
+/// (standart pencere, hedef pencere); yük yoksa veya pencere gün dışına taşıyorsa null (EXE 1.1.1).
+(double, double)? shiftedRenewable(DataStore data, String date, List<double> load, int s, int L, int t, double p) {
+  if (L < 1 || s < 0 || t < 0 || s + L > 24 || t + L > 24) return null;
+  final ren = [for (var h = 0; h < 24; h++) data.mixAt(date, h).renewablePct];
+  final e = [for (var i = 0; i < L; i++) p * load[s + i]];
+  var total = 0.0;
+  for (final v in e) {
+    total += v;
+  }
+  if (total <= 0) return null;
+  var a = 0.0, b = 0.0;
+  for (var i = 0; i < L; i++) {
+    a += e[i] * ren[s + i];
+  }
+  for (var i = 0; i < L; i++) {
+    b += e[i] * ren[t + i];
+  }
+  return (a / total, b / total);
+}
+
+/// Aynı kaydırmanın fosil marjinal yoğunlukla emisyonu: (B_fosil, S_fosil, değişim %) (EXE 1.1.2).
+/// Ana sonuçla aynı pencereler ve enerji kullanılır; yalnızca saatlik yoğunluk değişir.
+(double, double, double?) fossilSensitivity(List<double> load, List<double> ciFossil, int s, int L, int t, double p) {
+  var b = 0.0, sc = 0.0;
+  for (var i = 0; i < L; i++) {
+    b += p * load[s + i] * ciFossil[s + i];
+  }
+  for (var i = 0; i < L; i++) {
+    sc += p * load[s + i] * ciFossil[t + i];
+  }
+  return (b, sc, b > 0 ? (sc - b) / b * 100 : null);
+}

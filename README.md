@@ -187,25 +187,25 @@ LLM_MODEL=                 # boş: gemini-flash-lite-latest / claude-opus-5-5 / 
 
 ## Mobil (Android APK)
 
-`mobile/` klasörü, bu masaüstü uygulamasının (EXE 1.1.0) Flutter/Dart ile yazılmış Android karşılığıdır.
-Hiçbir özellik çıkarılmadan taşındı: Ana sayfa, Senaryo, En Temiz Saat, Delti'ye Sor, Hesabı Göster,
+`mobile/` klasörü, bu masaüstü uygulamasının (EXE 1.1.3) Flutter/Dart ile yazılmış Android karşılığıdır.
+Hiçbir özellik çıkarılmadan taşındı: Ana sayfa, Senaryo, En Temiz Saat, Yıllık Etki (PDF rapor dahil), Tesis Planı, Delti'ye Sor, Hesabı Göster,
 Geçmiş, Veri yönetimi, Kılavuz, Kaynaklar, İletişim ve Delti ayarları.
 
 - Hesap motoru (`mobile/lib/engine/`) `engine/*.py` dosyalarının satır satır çevirisidir; formül `shared/FORMUL.md`.
 - Veri ve AI şablonları `shared/assets` ve `shared/prompts` ile birebir aynıdır (`mobile/assets/shared`).
 - **Golden test:** `shared/golden/vectors.json` içindeki 30 senaryo Dart motorunda 1e-9 toleransla
-  aynı sonucu verir (`mobile/test/golden_test.dart`). Toplam 48 test.
+  aynı sonucu verir (`mobile/test/golden_test.dart`). Yıllık etki ve tesis planı da Python motoruyla 1e-9 toleransla karşılaştırılır (`mobile/test/annual_plan_test.dart`). Toplam 60 test.
 - Demo: comp_b, 15.07.2025, 03:00 → 18:00, %100 → **−15,62 %** (EXE ile aynı).
 - Delti anahtarı telefonda Android Keystore'da şifreli saklanır.
 
 ```powershell
 cd mobile
 flutter pub get
-flutter test                  # 48 test (30 golden senaryo dahil)
+flutter test                  # 60 test (30 golden senaryo dahil)
 flutter build apk --release   # build\app\outputs\flutter-apk\app-release.apk
 ```
 
-Kurulabilir APK: GitHub **Releases** sayfasında `CarbonDelta_1.1.0.apk`. Ayrıntılar: [mobile/README.md](mobile/README.md).
+Kurulabilir APK: GitHub **Releases** sayfasında `CarbonDelta_1.1.3.apk`. Ayrıntılar: [mobile/README.md](mobile/README.md).
 
 ## Klasörler
 

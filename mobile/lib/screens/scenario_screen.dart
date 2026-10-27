@@ -109,10 +109,10 @@ class _ScenarioScreenState extends State<ScenarioScreen> {
                     ),
                   ],
                   const SizedBox(height: 8),
+                  const Text('Emisyon tipi', style: TextStyle(color: th.muted, fontSize: 12.5)),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Text('Emisyon tipi'),
-                      const SizedBox(width: 8),
                       Expanded(
                         child: SegmentedButton<String>(
                           segments: const [

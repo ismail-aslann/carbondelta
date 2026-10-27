@@ -26,6 +26,8 @@ class SourceChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(9)),
       child: Text(sourceChips[source] ?? source,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(color: fg, fontSize: 11.5, fontWeight: FontWeight.w600)),
     );
   }
@@ -86,10 +88,14 @@ class DeltiBox extends StatelessWidget {
                 child: Delti(state: stateForSource[lead] ?? 'ready', size: 34),
               ),
               const SizedBox(width: 8),
-              const Text('Delti açıklıyor',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: th.text)),
+              const Flexible(
+                child: Text('Delti açıklıyor',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: th.text)),
+              ),
               const SizedBox(width: 8),
-              if (lead != null) SourceChip(lead),
+              if (lead != null) Flexible(child: SourceChip(lead)),
             ],
           ),
           child: Column(

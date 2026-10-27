@@ -1,5 +1,5 @@
 // ignore_for_file: non_constant_identifier_names
-// Saf hesap çekirdeği — EXE 1.1.0 engine/core.py ile satır satır aynı.
+// Saf hesap çekirdeği — EXE engine/core.py ile satır satır aynı (1.1.0–1.1.3 arasında değişmedi).
 //
 // Düz liste ve double. Toplama sırası her zaman i = 0'dan L-1'e
 // (h = 0'dan 23'e). Yuvarlama yok; yuvarlama yalnızca ekranda (ui/fmt.dart).

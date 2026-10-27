@@ -5,6 +5,7 @@
 import 'dart:convert';
 
 import '../data/history_db.dart';
+import '../engine/annual.dart' as annual;
 import '../engine/best_window.dart';
 import '../engine/core.dart' as core;
 import '../engine/data.dart';
@@ -487,4 +488,79 @@ double? _toDouble(Object? v) {
     return (null, 'Cümleden senaryo bilgisi çıkarılamadı.');
   }
   return (merged, '');
+}
+
+// ------------------------------------------------------------------ yıllık (EXE 1.1.1)
+const List<String> monthNames = [
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+];
+
+/// r: makine ya da tesis geneli yıllık sonuç; best: yıl boyu en temiz hedef sonucu.
+AIRequest? annualExplain(annual.AnnualResult? r, annual.AnnualResult? best,
+    [String kind = 'tCO2', double? parametricKwh]) {
+  if (r == null || r.daysOk == 0) return null;
+  final what = r.isFacility ? 'Tesis geneli (kaydırılabilir makineler)' : _data.machine(r.assetId).name;
+  final months = [for (final m in r.months) if (m.days > 0) m];
+  var strongest = months.first;
+  for (final m in months) {
+    if (m.deltaKg < strongest.deltaKg) strongest = m; // min(): eşitlikte ilk
+  }
+  final unit = kind == 'tCO2' ? 'CO2' : 'CO2-eşd';
+  final payload = <String, Object?>{
+    'kapsam': what,
+    'yil': r.year,
+    'emission_type': kind,
+    'standart_pencere': fmt.window(r.s, r.L),
+    'hedef_pencere': fmt.window(r.t, r.L),
+    'kaydirma_orani_yuzde': r.p * 100,
+    'hesaba_giren_gun': r.daysOk,
+    'toplam_gun': r.daysTotal,
+    'gun_birimi': r.isFacility ? 'makine-gün' : 'gün',
+    'kaydirilan_enerji_kwh': r.shiftedKwh,
+    'standart_emisyon_kg': r.baselineKg,
+    'secilen_emisyon_kg': r.scenarioKg,
+    'yillik_degisim_kg': r.deltaKg,
+    'yillik_degisim_ton': r.deltaKg / 1000,
+    'kaydirilan_yukte_degisim_yuzde': r.deltaPct,
+    'toplam_emisyon_icindeki_pay_yuzde': r.dailyDeltaPct,
+    'azalan_gun': r.betterDays,
+    'artan_gun': r.worseDays,
+    'yenilenebilir_pay_standart_yuzde': r.renSourcePct,
+    'yenilenebilir_pay_hedef_yuzde': r.renTargetPct,
+    'fosil_marjinal_duyarlilik_degisim_yuzde': r.fossilDeltaPct,
+    'fosil_marjinal_duyarlilik_degisim_kg': r.fossilDeltaKg,
+    'aylar': [
+      for (final m in months)
+        {'ay': monthNames[m.month - 1], 'degisim_kg': m.deltaKg, 'degisim_yuzde': m.deltaPct},
+    ],
+    'en_guclu_ay': monthNames[strongest.month - 1],
+  };
+  if (parametricKwh != null) payload['parametrik_kwh_saat'] = parametricKwh;
+  if (best != null) {
+    payload['yil_boyu_en_temiz_hedef'] = fmt.window(best.t, best.L);
+    payload['en_temiz_hedef_degisim_kg'] = best.deltaKg;
+    payload['en_temiz_hedef_degisim_yuzde'] = best.deltaPct;
+  }
+  if (r.isFacility) {
+    final parts = [for (final x in r.parts) if (x.daysOk > 0) x]..sort((a, b) => a.deltaKg.compareTo(b.deltaKg));
+    payload['makine_katkilari'] = [
+      for (final x in parts)
+        {'makine': _data.machine(x.assetId).name, 'degisim_kg': x.deltaKg, 'degisim_yuzde': x.deltaPct},
+    ];
+  }
+  final kg = r.deltaKg.abs();
+  final display = <String, Object?>{
+    'what': what,
+    'year': '${r.year}',
+    'days': '${r.daysOk}',
+    'day_unit': r.isFacility ? 'makine-günde' : 'günde',
+    'delta': kg >= 1000 ? '${fmt.num(kg / 1000)} t $unit' : '${fmt.num(kg, 1)} kg $unit',
+    'verb': r.deltaKg <= 0 ? 'azalırdı' : 'artardı',
+    'pct': fmt.pct(r.deltaPct),
+    'ren_src': r.renSourcePct == null ? '—' : '%${fmt.num(r.renSourcePct!, 1)}',
+    'ren_tgt': r.renTargetPct == null ? '—' : '%${fmt.num(r.renTargetPct!, 1)}',
+    'best_month': monthNames[strongest.month - 1],
+    'best_target': best != null ? fmt.window(best.t, best.L) : '—',
+  };
+  return _req('annual_explain', payload, display);
 }

@@ -144,7 +144,7 @@ class _ChartPainter extends CustomPainter {
 
   static const double padLeft = 40;
   static const double padRight = 38;
-  static const double padTop = 8;
+  static const double padTop = 22;
   static const double padBottom = 30;
 
   TextPainter _tp(String text, {double size = 10, Color color = _axisText, FontWeight? weight}) {
@@ -197,7 +197,7 @@ class _ChartPainter extends CustomPainter {
     if (inRange && w.status != core.nonShiftable) {
       final srcRect = Rect.fromLTRB(xOf(w.s.toDouble()), plot.top, xOf((w.s + w.L).toDouble()), plot.bottom);
       canvas.drawRect(srcRect, Paint()..color = _sourceColor.withValues(alpha: 0.18));
-      _label(canvas, 'Standart', srcRect, const Color(0xFF4A5562));
+      final srcBox = _label(canvas, 'Standart', srcRect, const Color(0xFF4A5562), maxX: plot.right);
       if (w.s != w.t) {
         Color color;
         if (w.status == core.ok && w.deltaPct != null) {
@@ -209,7 +209,7 @@ class _ChartPainter extends CustomPainter {
         }
         final tgtRect = Rect.fromLTRB(xOf(w.t.toDouble()), plot.top, xOf((w.t + w.L).toDouble()), plot.bottom);
         canvas.drawRect(tgtRect, Paint()..color = color.withValues(alpha: 0.2));
-        _label(canvas, 'Seçilen', tgtRect, color);
+        _label(canvas, 'Seçilen', tgtRect, color, avoid: srcBox, maxX: plot.right);
       }
     }
 
@@ -252,7 +252,8 @@ class _ChartPainter extends CustomPainter {
     // x ekseni
     canvas.drawLine(Offset(plot.left, plot.bottom), Offset(plot.right, plot.bottom),
         Paint()..color = const Color(0xFFCFD6DE));
-    for (var h = 0; h <= 24; h += 2) {
+    final xStep = plot.width / 12 < 20 ? 4 : 2; // dar ekranda etiketler birbirine değmesin
+    for (var h = 0; h <= 24; h += xStep) {
       final tp = _tp(h.toString().padLeft(2, '0'));
       tp.paint(canvas, Offset(xOf(h.toDouble()) - tp.width / 2, plot.bottom + 3));
     }
@@ -260,19 +261,30 @@ class _ChartPainter extends CustomPainter {
     xl.paint(canvas, Offset(plot.center.dx - xl.width / 2, plot.bottom + 16));
 
     // eksen başlıkları
+    // (üst kenar boşluğuna; eksen değerleriyle üst üste binmez)
     final ly = _tp('${w.ciLabel}/MWh', size: 9.5, color: th.ciColor);
-    ly.paint(canvas, Offset(2, plot.top - 2));
+    ly.paint(canvas, const Offset(2, 0));
     final ry = _tp('kWh', size: 9.5);
-    ry.paint(canvas, Offset(size.width - ry.width - 2, plot.top - 2));
+    ry.paint(canvas, Offset(size.width - ry.width - 2, 0));
   }
 
-  void _label(Canvas canvas, String text, Rect r, Color color) {
+  /// Pencere etiketini çizer; [avoid] ile çakışırsa bir satır aşağı iner.
+  /// Etiket grafik alanından taşmaz.
+  Rect _label(Canvas canvas, String text, Rect r, Color color, {Rect? avoid, double minX = padLeft, double? maxX}) {
     final tp = _tp(text, size: 10, color: color, weight: FontWeight.bold);
-    final box = Rect.fromCenter(
-        center: Offset(r.center.dx, r.top + tp.height / 2 + 4), width: tp.width + 8, height: tp.height + 2);
+    final bw = tp.width + 8, bh = tp.height + 2;
+    final right = maxX ?? double.infinity;
+    var cx = r.center.dx;
+    cx = math.max(cx, minX + bw / 2);
+    if (right.isFinite) cx = math.min(cx, right - bw / 2);
+    var box = Rect.fromCenter(center: Offset(cx, r.top + bh / 2 + 3), width: bw, height: bh);
+    if (avoid != null && box.overlaps(avoid.inflate(2))) {
+      box = box.shift(Offset(0, bh + 4));
+    }
     canvas.drawRRect(RRect.fromRectAndRadius(box, const Radius.circular(4)),
         Paint()..color = Colors.white.withValues(alpha: 0.85));
     tp.paint(canvas, Offset(box.left + 4, box.top + 1));
+    return box;
   }
 
   @override

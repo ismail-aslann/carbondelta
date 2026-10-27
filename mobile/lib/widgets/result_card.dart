@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 
 import '../engine/core.dart' as core;
+import '../engine/data.dart';
+import '../engine/insights.dart';
 import '../state/app_state.dart';
 import '../ui/fmt.dart' as fmt;
 import '../ui/theme.dart' as th;
@@ -29,15 +31,39 @@ class ResultCard extends StatelessWidget {
       color = th.muted;
       verdictColor = r.status == core.sameWindow ? th.muted : th.bad;
       deltaText = r.status == core.sameWindow ? fmt.pct(0.0) : '—';
-      verdict = statusMessage(r, c.inputs.restricted.toSet());
+      verdict = statusMessage(r, c.inputs.restricted.toSet(), c.inputs.p);
     }
     final text = resultExplanation(c);
     final computed = r.status == core.ok || r.status == core.sameWindow || r.status == core.noLoad;
-    final rows = <(String, String)>[
-      ('Standart pencere emisyonu', computed ? '${fmt.num(r.baselineKg)} $unit' : '—'),
-      ('Seçilen pencere emisyonu', computed ? '${fmt.num(r.scenarioKg)} $unit' : '—'),
-      ('Kaydırılan enerji', computed ? '${fmt.num(r.shiftedKwh)} kWh' : '—'),
-      ('Günlük etki', fmt.pct(r.dailyDeltaPct)),
+    final i = c.inputs;
+    final data = DataStore.instance;
+    // EXE 1.1.1–1.1.2: kaydırılan enerjinin yenilenebilir payı ve fosil marjinal duyarlılık.
+    final rs = (r.status == core.ok || r.status == core.sameWindow)
+        ? shiftedRenewable(data, i.date, c.load, i.s, i.L, i.t, i.p)
+        : null;
+    final fp = r.status == core.ok
+        ? fossilSensitivity(c.load, data.ciFossil24(i.date, i.ciKind), i.s, i.L, i.t, i.p).$3
+        : null;
+    final rows = <(String, String, Color?, String?)>[
+      ('Standart pencere emisyonu', computed ? '${fmt.num(r.baselineKg)} $unit' : '—', null, null),
+      ('Seçilen pencere emisyonu', computed ? '${fmt.num(r.scenarioKg)} $unit' : '—', null, null),
+      ('Kaydırılan enerji', computed ? '${fmt.num(r.shiftedKwh)} kWh' : '—', null, null),
+      ('Günlük etki', fmt.pct(r.dailyDeltaPct), null, null),
+      (
+        'Yenilenebilir payı (kaydırılan enerji)',
+        rs == null ? '—' : '%${fmt.num(rs.$1, 1)} → %${fmt.num(rs.$2, 1)}',
+        rs == null ? null : (rs.$2 >= rs.$1 ? th.good : th.bad),
+        'Kaydırılan enerjinin, tüketildiği saatlerde şebekedeki yenilenebilir (rüzgâr, güneş, hidro, '
+            'jeotermal, biyokütle) üretim payı: standart pencere → seçilen pencere.',
+      ),
+      (
+        'Fosil marjinal varsayımla',
+        fmt.pct(fp),
+        fp == null ? null : (fp <= 0 ? th.good : th.bad),
+        'Duyarlılık: kaydırılan yükü o saatlerde yalnızca fosil santrallerin karşıladığı varsayımıyla '
+            'aynı hesap (marjinal santral yaklaşımı). Ana sonuç ortalama yoğunlukla hesaplanır; bu değer '
+            'daha temkinli bir alt sınır gösterir.',
+      ),
     ];
     return th.SectionCard(
       title: 'Sonuç',
@@ -51,14 +77,23 @@ class ResultCard extends StatelessWidget {
             Text(text, style: const TextStyle(color: th.text, fontSize: 13, height: 1.35)),
           ],
           const Divider(height: 20, color: th.border),
-          for (final (k, v) in rows)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                children: [
-                  Expanded(child: th.Muted(k)),
-                  Text(v, style: const TextStyle(fontWeight: FontWeight.w600)),
-                ],
+          for (final (k, v, col, tip) in rows)
+            _tip(
+              tip,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Expanded(flex: 5, child: th.Muted(k)),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      flex: 4,
+                      child: Text(v,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(fontWeight: FontWeight.w600, color: col)),
+                    ),
+                  ],
+                ),
               ),
             ),
           const SizedBox(height: 10),
@@ -75,4 +110,9 @@ class ResultCard extends StatelessWidget {
       ),
     );
   }
+
+  /// Satıra dokununca açıklama görünür (masaüstündeki ipucu).
+  Widget _tip(String? message, Widget child) => message == null
+      ? child
+      : Tooltip(message: message, triggerMode: TooltipTriggerMode.tap, showDuration: const Duration(seconds: 6), child: child);
 }

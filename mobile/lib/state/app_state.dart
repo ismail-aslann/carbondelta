@@ -81,7 +81,7 @@ class Computation {
 }
 
 /// ok dışındaki durumlar için kullanıcıya gösterilen Türkçe açıklama.
-String statusMessage(core.Result r, Set<int> restricted) {
+String statusMessage(core.Result r, Set<int> restricted, [double? p]) {
   switch (r.status) {
     case core.nonShiftable:
       return nonShiftableText;
@@ -93,6 +93,7 @@ String statusMessage(core.Result r, Set<int> restricted) {
     case core.sameWindow:
       return 'Standart ve seçilen pencere aynı; emisyon değişmez.';
     case core.noLoad:
+      if (p == 0) return 'Kaydırma oranı %0: taşınacak enerji yok; yüzde hesaplanamaz. Oranı artırın.';
       return 'Standart pencerede yük yok (0 kWh); yüzde hesaplanamaz.';
   }
   return '';
@@ -172,6 +173,9 @@ class AppState extends ChangeNotifier {
 
   /// Veri paketleri değişince artar.
   int dataVersion = 0;
+
+  /// Yıllık Etki / Tesis Planı açıkken alt bilgide kendi kapsamlarının kaynak etiketi (metin, tesis ölçümü mü).
+  final ValueNotifier<(String, bool)?> tabFooter = ValueNotifier(null);
 
   /// Son hesap otomatik Delti açıklaması istesin mi (En iyi saat sonrası istemez).
   bool lastAutoAi = true;
