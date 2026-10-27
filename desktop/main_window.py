@@ -23,7 +23,9 @@ from desktop.chart_widget import ChartWidget
 from desktop.history_db import HistoryDB
 from desktop.resources import resource_path
 from desktop.start_screen import StartScreen
-from desktop.tools_tabs import BestWindowTab, NLTab
+from desktop.tools_tabs import BestWindowTab
+from desktop.chat_tab import ChatTab
+from desktop import delti_chat
 from desktop.annual_tab import AnnualTab
 from desktop.plan_tab import PlanTab
 from desktop.guide_tab import GuideTab
@@ -210,9 +212,10 @@ class MainWindow(QMainWindow):
         self.plan_tab.apply_requested.connect(self.apply_best_choice)
         self.plan_tab.footer_changed.connect(lambda t, r: self._tab_footer(self.plan_tab, t, r))
         self.tabs.addTab(self.plan_tab, "Tesis Planı")
-        self.nl_tab = NLTab()
-        self.nl_tab.submit.connect(self.submit_nl_page)
-        self.nl_tab.open_requested.connect(self.open_nl_result)
+        self._chat_history: list[tuple[str, str]] = []
+        self.nl_tab = ChatTab()
+        self.nl_tab.submit.connect(self.chat_submit)
+        self.nl_tab.apply_requested.connect(self.apply_chat_scenario)
         self.nl_tab.settings_requested.connect(self.open_delti_settings)
         self.nl_tab.set_online(self.ai.online)
         self.tabs.addTab(self.nl_tab, "Delti'ye Sor")
@@ -1089,8 +1092,50 @@ class MainWindow(QMainWindow):
                                        ci_kind=cur.ci_kind))
         self.tabs.setCurrentWidget(self.scenario_tab)
 
-    def submit_nl_page(self, sentence: str) -> None:
-        self.ai.submit(ai_context.nl_input(sentence, self.inputs()), ("nlpage", sentence))
+    # -------------------------------------------------------- Delti sohbet
+    def chat_submit(self, sentence: str) -> None:
+        """Delti'ye Sor: selam/teşekkür yerelde, senaryo cümleleri ön izleme, diğerleri genel soru."""
+        kind = delti_chat.classify(sentence)
+        self._chat_history.append(("kullanıcı", sentence))
+        if kind in (delti_chat.GREETING, delti_chat.THANKS):
+            text = delti_chat.local_reply(kind)
+            self.nl_tab.add_delti(text, "local")
+            self._chat_history.append(("Delti", text))
+            return
+        if kind == delti_chat.SCENARIO:
+            bid = self.nl_tab.add_delti("Düşünüyorum… cümleyi senaryoya çevirip motorla hesaplıyorum.", "pending")
+            if self.ai.online:
+                self.ai.submit(ai_context.nl_input(sentence, self.inputs()), ("chatnl", bid, sentence))
+            else:
+                self._chat_preview(bid, sentence, AIReply("nl_input", "", "fallback_offline"))
+            return
+        bid = self.nl_tab.add_delti("Düşünüyorum…", "pending")
+        req = delti_chat.chat_request(sentence, self.current, self._chat_history[:-1])
+        self.ai.submit(req, ("chat", bid))   # çevrimdışıysa hazır cevap hemen gelir
+
+    def _chat_preview(self, bid: int, sentence: str, reply: AIReply) -> None:
+        merged, err, _via = self._nl_merge(sentence, reply)
+        if merged is None:
+            text = f"Bunu tam bir senaryoya çeviremedim ({err}). {delti_chat.HELP}"
+            self.nl_tab.update_delti(bid, text, "local")
+            self._chat_history.append(("Delti", text))
+            return
+        cur = self.inputs()
+        merged["date"] = cur.date
+        rule = ai_context.parse_nl_rule(sentence)
+        names = {"asset_id": "makine", "s": "standart saat", "L": "pencere uzunluğu"}
+        assumed = [v for k, v in names.items() if k not in rule]
+        note = (f"Belirtmediğiniz {', '.join(assumed)} Senaryo sekmesindeki ayarlardan alındı." if assumed else "")
+        pv = delti_chat.preview(merged, cur, note)
+        self.nl_tab.update_delti(bid, pv.text, "preview", self.nl_tab.offer_apply(pv.merged) if pv.ok else None)
+        self._chat_history.append(("Delti", pv.text))
+
+    def apply_chat_scenario(self, merged: dict) -> None:
+        cur = self.inputs()
+        self.set_inputs(ScenarioInputs(merged["asset_id"], merged.get("date", cur.date), merged["s"], merged["L"],
+                                       merged["t"], merged["p"], restricted=cur.restricted, ci_kind=cur.ci_kind,
+                                       parametric=cur.parametric, param_kwh=cur.param_kwh))
+        self._open_app(self.scenario_tab)
 
     def _nl_merge(self, sentence: str, reply: AIReply) -> tuple[dict | None, str, str]:
         """AI ve kural çözümleyiciyi birleştirir: cümlede açıkça yazan sayılar (saat, süre, yüzde)
@@ -1112,27 +1157,6 @@ class MainWindow(QMainWindow):
         merged, err = ai_context.validate_nl(obj, self.inputs())
         return merged, err, via
 
-    def _apply_nl_page(self, sentence: str, reply: AIReply) -> None:
-        merged, err, via = self._nl_merge(sentence, reply)
-        if merged is None:
-            self.nl_tab.show_error(err)
-            return
-        cur = self.inputs()
-        merged["date"] = cur.date
-
-        def explain(m, mg, r):
-            c = Computation(ScenarioInputs(mg["asset_id"], mg["date"], mg["s"], mg["L"], mg["t"], mg["p"]),
-                            m, [], [], r)
-            return result_explanation(c) or status_message(r, set(), mg["p"])
-
-        # Anlaşılan senaryo hemen Senaryo sekmesine uygulanır (önizleme ayrıca gösterilir).
-        self.set_inputs(ScenarioInputs(merged["asset_id"], merged["date"], merged["s"], merged["L"],
-                                       merged["t"], merged["p"], restricted=cur.restricted,
-                                       ci_kind=cur.ci_kind))
-        self.nl_tab.show_result(merged, via, explain)
-
-    def open_nl_result(self, _merged: dict) -> None:
-        self.tabs.setCurrentWidget(self.scenario_tab)
 
     # ------------------------------------------------------------------ AI
     def _start_batch(self, items: list[tuple[str, str, str]]) -> int:
@@ -1244,6 +1268,13 @@ class MainWindow(QMainWindow):
         sentence = self.nl_edit.text().strip()
         if not sentence:
             return
+        if delti_chat.classify(sentence) != delti_chat.SCENARIO:
+            # Soru ya da sohbet: Delti'ye Sor ekranında yanıtlanır.
+            self.nl_edit.clear()
+            self._set_nl_status("Delti'ye Sor ekranında yanıtlandı.")
+            self._open_app(self.nl_tab)
+            self.nl_tab.send(sentence)
+            return
         self._set_nl_status("Çözümleniyor…" if self.ai.online else "")
         self.ai.submit(ai_context.nl_input(sentence, self.inputs()), ("nl", sentence))
 
@@ -1277,8 +1308,11 @@ class MainWindow(QMainWindow):
             self.annual_tab.show_ai(reply.text, reply.source, tag[1])
         elif kind == "nl":
             self._apply_nl(tag[1], reply)
-        elif kind == "nlpage":
-            self._apply_nl_page(tag[1], reply)
+        elif kind == "chatnl":
+            self._chat_preview(tag[1], tag[2], reply)
+        elif kind == "chat":
+            self.nl_tab.update_delti(tag[1], reply.text, reply.source)
+            self._chat_history.append(("Delti", reply.text))
 
     def closeEvent(self, event) -> None:
         self.ai.shutdown()

@@ -109,6 +109,15 @@ yalnızca fosil santrallerin karşıladığı varsayımıyla aynı hesabı yapar
 (`data.ci_fossil_24`). Senaryo kartında, yıllık etkide, PDF/CSV'de ve tesis planında gösterilir; gerçek etki
 büyük olasılıkla iki değer arasındadır.
 
+## Delti sohbet
+
+**Delti'ye Sor** bir sohbet ekranıdır (`desktop/chat_tab.py`, mantık `desktop/delti_chat.py`). Mesajın türü kural
+tabanlı ayırt edilir: selam/teşekkür yerelde yanıtlanır; makine ve saat içeren cümleler (ör. “Kompresörü 3'ten 18'e
+alırsak ne olur?”) **ön izleme** olarak motorla hesaplanır, Senaryo sekmesi değişmez — sonuç, yenilenebilir pay, fosil
+duyarlılık, varsa daha temiz saat ve yıllık etki gösterilir, “Senaryoya uygula” ile aktarılır. Diğer sorular AI'ya
+(`chat` işlevi; uygulama bilgi metni + mevcut senaryo + son mesajlar) gider; cevaptaki sayılar doğrulanır, AI yoksa
+ya da doğrulanamazsa hazır cevap (SSS) gösterilir. Üstteki kutuya yazılan sorular da bu ekrana yönlendirilir.
+
 ## Veri ekleme (yeni makine, yeni yıl, yeni katsayılar)
 
 Uygulamadaki **Veri** sekmesinden (ana sayfada *Veri yönetimi*) eklenir; EXE'yi yeniden üretmek gerekmez.

@@ -125,22 +125,19 @@ potansiyeline göre sırayla yerleştirir, sınırı aşan pencereyi atlayıp s�
 makineyi Senaryo'da açar; <i>CSV</i> planı kaydeder.</p>"""),
 
     ("delti", "Delti'ye Sor", f"""
-<p><b>Delti</b>, CarbonDelta'nın yapay zekâ (AI) yardımcısıdır. Hesap yapmaz; motorun hesapladığı sonuçları
-açıklar ve günlük dille yazdıklarınızı senaryoya çevirir.</p>
-<p>Örnekler: <i>“Kompresörü 3'ten 18'e al”</i>, <i>“Presi %50 ile 2 saat 21'e kaydır”</i>. Cümle anlaşılınca
-Senaryo ekranına hemen uygulanır ve sonucun önizlemesi gösterilir. Oran yazmazsanız %100 kabul edilir;
-yazmadığınız diğer değerler (gün, kısıtlı saatler) korunur.</p>
-<p>Yazıp {_k('Enter')}'a basın; cevap gelince {_k('Enter')} ile <i>Senaryoya git</i>. Üst banttaki kutu da aynı işi yapar.</p>"""),
-
-    ("explain", "Delti'nin açıklamaları", """
-<p>Senaryo ekranındaki <b>Delti açıklıyor</b> kartı, her hesaptan sonra sonucu sade bir dille anlatır:
-ne taşındı, emisyon neden değişti (o saatlerdeki yenilenebilir payı, baskın kaynak) ve günlük etkisi.</p>
+<p><b>Delti</b>, CarbonDelta'nın yapay zekâ (AI) yardımcısıdır. <b>Delti'ye Sor</b> ekranı bir sohbet penceresidir:
+yazdıklarınız ve Delti'nin cevapları baloncuklar halinde görünür, Delti son mesajları hatırlar.</p>
 <ul>
-<li><b>Neden bu saat?</b> İki penceredeki üretim karışımını kıyaslar.</li>
-<li><b>Karşılaştır:</b> Mevcut senaryoyu en son kaydedilenle kıyaslar.</li>
-<li><b>Daha fazla:</b> Günlük etki yorumu, mevsim notu (aynı saatlerin 12 aylık davranışı), rapor cümlesi,
-terim açıklayıcı, veri kaynakları ve metni kopyala.</li>
+<li><b>Genel sorular:</b> “Bu program ne yapıyor?”, “Verileri nereden alıyorsunuz?”, “Yıllık etki nedir?” gibi
+sorulara cevap verir. İnternet ve API anahtarı varsa uygulamanın bilgi metnine ve mevcut senaryoya dayanarak cevaplar;
+yoksa hazır cevaplarla yardımcı olur.</li>
+<li><b>Ön izleme:</b> “Kompresörü 3'ten 18'e alırsak ne olur?” gibi sorularda senaryoyu <b>değiştirmeden</b> motorla
+hesaplar: sonuç, yenilenebilir pay, fosil duyarlılık, varsa daha temiz bir saat ve yıllık etki. Belirtmediğiniz değerler
+Senaryo sekmesinden alınır. Uygun görürseniz <i>Senaryoya uygula</i> ile aktarırsınız.</li>
+<li><b>Öneri düğmeleri</b> sık sorulan soruları tek tıkla sorar; <i>Yeni sohbet</i> geçmişi temizler.</li>
 </ul>
+<p>Üstteki Delti kutusuna bir <b>komut</b> yazarsanız (ör. “Presi %50 ile 21'e kaydır”) doğrudan Senaryo'ya uygulanır;
+bir <b>soru</b> yazarsanız Delti'ye Sor ekranında cevaplanır.</p>
 <p><b>Güvenlik:</b> Delti'nin metnindeki her sayı hesaplanan değerlerle karşılaştırılır; veride olmayan bir sayı
 yazarsa metin gösterilmez, yerine şablon metin gelir. Etikette <i>AI</i>, <i>Düşünüyor…</i>,
 <i>Çevrimdışı · şablon</i> veya <i>Şablon · doğrulanamadı</i> yazar.</p>
