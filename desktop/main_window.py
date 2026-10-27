@@ -702,7 +702,7 @@ class MainWindow(QMainWindow):
 
         self.chart.update_chart(ci, load, i.s, i.L, i.t, set(i.restricted), r.status,
                                 r.delta_pct, CI_LABELS[i.ci_kind])
-        if self.tabs.currentWidget() not in (self.annual_tab, self.plan_tab):
+        if self.tabs.currentWidget() not in (self.annual_tab, self.plan_tab, self.sources_tab):
             self._set_footer(data.source_label(i.asset_id, i.date), data.is_real(i.asset_id))
         self._update_card(self.current)
         self.calc_tab.update_computation(self.current)
@@ -818,6 +818,7 @@ class MainWindow(QMainWindow):
         """Başlangıç ekranındaki eğriyi, son senaryo kartını ve durum satırını günceller."""
         self.start.set_curve(data.ci_24(DEMO_DATE))
         self.start.set_status(self.ai.online, len(data.machines()))
+        self.start.source_label.setText(data.overall_source_label())
         latest = self.db.latest()
         if latest is not None and latest["delta_pct"] is not None and data.has_machine(latest["asset_id"]):
             name = data.machine(latest["asset_id"])["name"]
@@ -841,6 +842,9 @@ class MainWindow(QMainWindow):
         self.annual_tab.reload_machines()
         self.plan_tab.reload_machines()
         self.calc_tab._fill_etkb()
+        self.sources_tab.refresh()
+        if self.tabs.currentWidget() is self.sources_tab:
+            self._on_tab_changed(self.tabs.currentIndex())
         self.history_tab.refresh()
         self.refresh_start()
         self.data_tab.show_message(message)
@@ -959,7 +963,10 @@ class MainWindow(QMainWindow):
         elif self.tabs.currentWidget() is self.plan_tab:
             i = self.inputs()
             self.plan_tab.load_inputs(i.date, i.s, i.L, i.p, i.restricted, i.ci_kind)
-        if self.tabs.currentWidget() not in (self.annual_tab, self.plan_tab) and self.current is not None:
+        if self.tabs.currentWidget() is self.sources_tab:
+            sm = data.source_summary()
+            self._set_footer(data.overall_source_label(), bool(sm["real"]) and not sm["sample"])
+        elif self.tabs.currentWidget() not in (self.annual_tab, self.plan_tab) and self.current is not None:
             i = self.current.inputs
             self._set_footer(data.source_label(i.asset_id, i.date), data.is_real(i.asset_id))
         QTimer.singleShot(0, self._focus_current_tab)

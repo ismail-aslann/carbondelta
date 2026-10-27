@@ -272,10 +272,12 @@ def term_explain(term: str) -> AIRequest:
 
 
 def data_source_explain() -> AIRequest:
-    payload = {"sources": [f"{data.BASE_GRID_LABEL} saatlik üretim (+ eklenen yıllar)",
-                           f"{data.factors_label()} emisyon faktörleri",
-                           "Zenodo imalat tesisi makine yükleri"],
-               "load_is_sample": True}
+    sm = data.source_summary()
+    payload = {"sebeke_verisi": [{"kaynak": k, "gun": n} for k, n in sm["grids"]],
+               "emisyon_faktorleri": sm["factors"],
+               "ornek_yuk_makineleri": [n for n, _ in sm["sample"]],
+               "tesis_olcumu_makineleri": [n for n, _ in sm["real"]],
+               "load_is_sample": not sm["real"]}
     return _req("data_source_explain", payload, {})
 
 

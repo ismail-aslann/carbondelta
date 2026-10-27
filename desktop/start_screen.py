@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 
 from desktop import delti, fmt
 from desktop.resources import resource_path
+from engine import data
 from engine.appinfo import APP_NAME, DEFAULT_APP_NAME
 
 BG_CENTER = "#0d4a3d"
@@ -255,7 +256,8 @@ class StartScreen(QWidget):
         root.addStretch(1)
 
         foot = QHBoxLayout()
-        left = QLabel("Örnek yük, Balıkesir tesisi değil · Kaynak: EPİAŞ 2025, ETKB 2023, Zenodo")
+        left = QLabel(data.overall_source_label())
+        self.source_label = left
         left.setObjectName("foot")
         foot.addWidget(left, 1)
         self.status = QLabel("")

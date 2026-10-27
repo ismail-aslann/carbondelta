@@ -8,8 +8,10 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFormLayout, QHBox
 from desktop import ai_settings, delti, theme
 from desktop.ai_client import DEFAULT_MODELS, AIConfig, check_connection
 
-PROVIDERS = [("gemini", "Google Gemini"), ("claude", "Anthropic Claude")]
-KEY_PAGES = {"gemini": "https://aistudio.google.com/apikey", "claude": "https://console.anthropic.com/"}
+PROVIDERS = [("gemini", "Google Gemini"), ("claude", "Anthropic Claude"), ("openai", "OpenAI GPT"),
+             ("grok", "xAI Grok")]
+KEY_PAGES = {"gemini": "https://aistudio.google.com/apikey", "claude": "https://console.anthropic.com/",
+             "openai": "https://platform.openai.com/api-keys", "grok": "https://console.x.ai/"}
 SOURCE_TEXT = {
     "uygulama": "Anahtar bu pencereden kaydedildi (bu bilgisayarda şifreli saklanıyor).",
     ".env": "Anahtar program klasöründeki .env dosyasından okunuyor. Buradan kaydederseniz bu ayar öncelikli olur.",
@@ -74,6 +76,7 @@ class DeltiSettingsDialog(QDialog):
         form.addRow("Sağlayıcı", self.provider)
 
         key_row = QHBoxLayout()
+        self._initial = (cfg.provider, cfg.api_key)
         self.key = QLineEdit(cfg.api_key)
         self.key.setEchoMode(QLineEdit.Password)
         self.key.setPlaceholderText("API anahtarını buraya yapıştırın")
@@ -131,6 +134,13 @@ class DeltiSettingsDialog(QDialog):
 
     def _provider_changed(self) -> None:
         p = self._provider_key()
+        # Bir sağlayıcının anahtarı başka sağlayıcıya yanlışlıkla kaydedilmesin.
+        if hasattr(self, "key"):
+            first_provider, first_key = self._initial
+            if p != first_provider and self.key.text().strip() == first_key:
+                self.key.clear()
+            elif p == first_provider and not self.key.text().strip():
+                self.key.setText(first_key)
         self.model.setPlaceholderText(f"Boş bırakın: {DEFAULT_MODELS[p]}")
         self.link.setText(f"Anahtarınız yoksa: <a href='{KEY_PAGES[p]}' style='color:{theme.PRIMARY};'>"
                           f"{KEY_PAGES[p]}</a> adresinden ücretsiz/ücretli anahtar alabilirsiniz.")

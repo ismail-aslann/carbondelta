@@ -113,3 +113,22 @@ def test_zero_ratio_message_names_the_ratio():
     assert r.status == "no_load"
     assert "oranı %0" in status_message(r, set(), 0.0)
     assert "yük yok" in status_message(r, set(), 1.0)
+
+
+def test_sources_follow_packages(pkg_dir, tmp_path):
+    from desktop.tabs import note_html, packages_html, source_cards
+    assert "Henüz veri eklenmedi" in packages_html()
+    _write(tmp_path / "m.csv", ["Tarih;Saat;kWh"] + [f"2025-07-15;{h};5" for h in range(24)])
+    c = pk.check_machine_file(tmp_path / "m.csv", set(data.all_dates()))
+    p = pk.add_machine_package(c, "Hat 3 Kompresör", "x", True, "real")
+    data.reload()
+    cards = source_cards()
+    assert "Makine yükleri" == cards[2][0] and "Hat 3 Kompresör" in cards[2][2] and "8 makine" in cards[2][1]
+    assert "Hat 3 Kompresör" in packages_html() and "Etkin" in packages_html()
+    assert "birlikte" in note_html() and "Tesis ölçümü ve örnek yük" in data.overall_source_label()
+    pk.set_enabled(p.id, False)
+    data.reload()
+    assert "Kapalı" in packages_html() and "Hat 3" not in source_cards()[2][2]
+    pk.delete_package(p.id)
+    data.reload()
+    assert "Henüz veri eklenmedi" in packages_html() and source_cards()[2][0] == data.SAMPLE_SOURCE

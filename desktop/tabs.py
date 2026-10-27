@@ -16,9 +16,10 @@ from desktop import fmt, theme
 from engine import data
 from engine.explain import breakdown
 
-FORMULA_HTML = f"""
-<p style="margin-top:0">Seçilen gün için her saatin şebeke karbon yoğunluğu (EPİAŞ 2025 üretimi ×
-ETKB 2023 katsayıları) ve makinenin o saatteki tüketimi kullanılır. <b>Hesapta yapay zekâ yoktur.</b></p>
+def formula_html(grid: str = data.BASE_GRID_LABEL, factors: str = data.BASE_FACTORS_LABEL) -> str:
+    return f"""
+<p style="margin-top:0">Seçilen gün için her saatin şebeke karbon yoğunluğu ({grid} üretimi ×
+{factors} katsayıları) ve makinenin o saatteki tüketimi kullanılır. <b>Hesapta yapay zekâ yoktur.</b></p>
 <table cellspacing="0" cellpadding="3">
 <tr><td valign="top"><b>1.</b></td><td><b>Taşınan enerji</b> — standart penceredeki her saat için
  <i>E = kaydırma oranı × o saatin tüketimi</i> (kWh)</td></tr>
@@ -35,26 +36,93 @@ ETKB 2023 katsayıları) ve makinenin o saatteki tüketimi kullanılır. <b>Hesa
 hassasiyetle yapılır; yalnızca ekranda yuvarlanır.</p>
 """
 
-SOURCE_CARDS = [
-    ("EPİAŞ 2025", "8.760 saat",
-     "Şeffaflık Platformu saatlik gerçek zamanlı üretim verisi. Doğal gaz, linyit, ithal kömür, "
-     "rüzgâr, güneş, hidro gibi kaynakların her saatteki üretimi. Her saatin karbon yoğunluğu, "
-     "kaynak üretimlerinin ETKB katsayılarıyla çarpılıp yurtiçi toplam üretime bölünmesiyle bulunur."),
-    ("ETKB 2023", "15 yakıt katsayısı",
-     "Enerji ve Tabii Kaynaklar Bakanlığı'nın yakıt türü başına resmî tCO2/MWh ve tCO2-eşd/MWh "
-     "emisyon faktörleri. Yenilenebilir kaynaklar için doğrudan yakıt emisyonu sıfır kabul edilir. "
-     "Tablo \"Hesabı Göster\" sekmesindedir."),
-    ("Zenodo", "7 makine · 1.839 gün",
-     "Bir imalat tesisindeki makinelerin 15 dakikalık enerji ölçümleri. Faz tekrarları, sensör hatalı "
-     "cihazlar ve eksik günler temizlenmiş, saatlik toplama çevrilmiştir. Havalandırma ve pres ısıtma "
-     "sürekli/kısıtlı süreç olduğu için kaydırılamaz."),
-]
+def _n(v: int) -> str:
+    return f"{v:,}".replace(",", ".")
 
-NOTE_HTML = """
-<b>Önemli not: örnek yük</b><br>
-Yük verisi İrlanda'daki bir tesisten alınmış ve saat numarasıyla Türkiye şebekesine eşlenmiş
-<b>örnek</b> veridir; Balıkesir tesisinin ölçümü değildir. Sonuçlar yöntemi ve büyüklük mertebesini gösterir.
-"""
+
+def source_cards(sm: dict | None = None) -> list[tuple[str, str, str]]:
+    """Kaynaklar kartları yüklü verilere göre üretilir (yeni yıl, katsayı, makine eklenince değişir)."""
+    sm = sm or data.source_summary()
+    yr = data.years_text(sm["years"])
+    grid_lines = " · ".join(f"{k}: {_n(n)} gün" for k, n in sm["grids"])
+    extra = ("" if len(sm["grids"]) == 1 else
+             " Eklenen yıllar Veri sekmesindeki paketlerden gelir; aynı gün birden fazla kaynakta varsa son eklenen "
+             "kullanılır.")
+    grid = (f"EPİAŞ {yr}", f"{_n(sm['days'] * 24)} saat",
+            f"Şeffaflık Platformu saatlik gerçek zamanlı üretim verisi ({grid_lines}). Doğal gaz, linyit, ithal kömür, "
+            "rüzgâr, güneş, hidro gibi kaynakların her saatteki üretimi. Her saatin karbon yoğunluğu, kaynak "
+            f"üretimlerinin emisyon katsayılarıyla çarpılıp yurtiçi toplam üretime bölünmesiyle bulunur.{extra}")
+    if sm["factors_is_package"]:
+        fac = (f"Etkin katsayılar: {sm['factors']} (Veri sekmesinden eklendi; varsayılan {data.BASE_FACTORS_LABEL} "
+               "yerine kullanılıyor ve bütün yıllar bunlarla hesaplanıyor). ")
+    else:
+        fac = "Enerji ve Tabii Kaynaklar Bakanlığı'nın yakıt türü başına resmî emisyon faktörleri. "
+    factors = (sm["factors"], f"{sm['factor_count']} yakıt katsayısı",
+               fac + "tCO2/MWh ve tCO2-eşd/MWh; yenilenebilir kaynaklar için doğrudan yakıt emisyonu sıfır kabul "
+               "edilir. Tablo «Hesabı Göster» sekmesindedir.")
+    sample, real = sm["sample"], sm["real"]
+    parts = []
+    if sample:
+        parts.append(f"Örnek yük ({data.SAMPLE_SOURCE}): {len(sample)} makine, {_n(sum(d for _, d in sample))} "
+                     "makine-gün; bir imalat tesisindeki 15 dakikalık ölçümler temizlenip saatlik toplama çevrildi.")
+    if real:
+        parts.append("Tesis ölçümü: " + ", ".join(f"{n} ({_n(d)} gün)" for n, d in real) + ".")
+    parts.append("Sürekli/kısıtlı süreçler (ör. havalandırma, pres ısıtma) kaydırılamaz.")
+    n_m, n_d = len(sample) + len(real), sum(d for _, d in sample + real)
+    loads = ("Makine yükleri" if real else data.SAMPLE_SOURCE, f"{n_m} makine · {_n(n_d)} gün", " ".join(parts))
+    return [grid, factors, loads]
+
+
+def note_html(sm: dict | None = None) -> str:
+    sm = sm or data.source_summary()
+    if sm["real"] and not sm["sample"]:
+        return ("<b>Veri: tesis ölçümü</b><br>Bütün makineler tesisin kendi ölçümüdür: "
+                + ", ".join(n for n, _ in sm["real"]) + ".")
+    if sm["real"]:
+        return ("<b>Not: tesis ölçümü ve örnek yük birlikte</b><br>Tesis ölçümü olan makineler: "
+                + ", ".join(n for n, _ in sm["real"]) + ". Diğer makineler İrlanda'daki bir tesisten alınmış "
+                "<b>örnek</b> yüktür; sonuç ekranlarının alt bilgisi hangi verinin kullanıldığını gösterir.")
+    return ("<b>Önemli not: örnek yük</b><br>Yük verisi İrlanda'daki bir tesisten alınmış ve saat numarasıyla Türkiye "
+            "şebekesine eşlenmiş <b>örnek</b> veridir; Balıkesir tesisinin ölçümü değildir. Sonuçlar yöntemi ve "
+            "büyüklük mertebesini gösterir.")
+
+
+KIND_TEXT = {"machine": "Makine", "grid": "Şebeke verisi (yıl)", "factors": "Emisyon katsayıları"}
+
+
+def packages_html(sm: dict | None = None) -> str:
+    """Kullanıcının Veri sekmesinden eklediği paketler (Kaynaklar sekmesinde listelenir)."""
+    sm = sm or data.source_summary()
+    pkgs = sm["packages"]
+    if not pkgs:
+        return (f"<span style='color:{theme.MUTED}'>Henüz veri eklenmedi. Yeni makine ölçümü, yeni yıl üretim verisi "
+                "ya da yeni emisyon katsayıları <b>Veri</b> sekmesinden eklenebilir; eklenenler burada listelenir."
+                "</span>")
+    rows = []
+    for p in pkgs:
+        m = p["meta"]
+        if p["kind"] == "machine":
+            src = "tesis ölçümü" if m.get("source") == "real" else "örnek yük"
+            detail = f"{m.get('days', 0)} gün · {src}"
+        elif p["kind"] == "grid":
+            detail = f"{_n(int(m.get('hours', 0)))} saat"
+        else:
+            detail = "bütün yıllar bunlarla hesaplanır"
+        span = ""
+        if m.get("first_day") and m.get("last_day"):
+            span = f"{fmt.date(m['first_day'])} – {fmt.date(m['last_day'])}"
+        state = (f"<span style='color:{theme.GOOD}'>● Etkin</span>" if p["enabled"]
+                 else f"<span style='color:{theme.MUTED}'>○ Kapalı</span>")
+        added = fmt.datetime(p["created_at"]) if p["created_at"] else ""
+        rows.append(f"<tr><td><b>{p['name']}</b></td><td>{KIND_TEXT.get(p['kind'], p['kind'])}</td>"
+                    f"<td>{detail}</td><td>{span}</td><td>{state}</td>"
+                    f"<td style='color:{theme.MUTED}'>{added}</td></tr>")
+    head = "".join(f"<th align='left' style='color:{theme.MUTED}; font-weight:600'>{h}</th>"
+                   for h in ("Paket", "Tür", "Kapsam", "Tarih aralığı", "Durum", "Eklenme"))
+    return (f"<table width='100%' cellspacing='0' cellpadding='4'><tr>{head}</tr>{''.join(rows)}</table>"
+            f"<p style='color:{theme.MUTED}; margin-bottom:0'>Kapalı paketler hesaba girmez. Açıp kapatmak ve silmek "
+            "için Veri sekmesini kullanın.</p>")
+
 
 SCOPE_HTML = f"""
 <b>Kapsam</b><br>
@@ -64,14 +132,17 @@ kapsam dışıdır. Yapay zekâ yalnızca hesaplanmış sayıları açıklama me
 hesap yine çalışır.</span>
 """
 
-METHOD_HTML = f"""
+def method_html() -> str:
+    sm = data.source_summary()
+    yr = data.years_text(sm["years"])
+    return f"""
 <b>Yöntem ve sınırlılıklar</b>
 <ul style="margin-top:4px">
 <li><b>Ortalama karbon yoğunluğu:</b> Her saatin yoğunluğu o saatteki yurt içi üretim karışımından hesaplanır
 (konum bazlı yöntem). Bir yükü kaydırmanın şebekedeki gerçek etkisi, o saatte üretimini artıran ya da azaltan
 <i>marjinal</i> santrale bağlıdır. Bu nedenle sonuçlar karşılaştırma ve önceliklendirme için bir göstergedir;
 marjinal emisyon faktörü desteği ileride eklenebilir.</li>
-<li><b>Faktör yılı:</b> ETKB 2023 emisyon faktörleri 2025 üretimine uygulanır; yeni faktörler Veri sekmesinden
+<li><b>Faktör yılı:</b> {sm['factors']} emisyon faktörleri {yr} üretimine uygulanır; yeni faktörler Veri sekmesinden
 eklenebilir.</li>
 <li><b>Kapsam:</b> Yalnızca EPİAŞ gerçek zamanlı üretim verisindeki yurt içi üretim kullanılır; elektrik ithalatı/
 ihracatı ve bu veride yer almayan üretim (ör. dağıtık güneşin bir kısmı) hesaba girmez.</li>
@@ -213,12 +284,16 @@ class CalcTab(QWidget):
         rl.setSpacing(10)
         fcard, flay = theme.card("Hesap nasıl yapılıyor?")
         formula = QTextBrowser()
-        formula.setHtml(FORMULA_HTML)
+        formula.setHtml(formula_html())
+        self.formula = formula
         formula.setMinimumHeight(190)
         flay.addWidget(formula)
         rl.addWidget(fcard, 6)
 
-        ecard, elay = theme.card("ETKB 2023 emisyon faktörleri")
+        ecard, elay = theme.card()
+        self.etkb_title = QLabel(f"{data.factors_label()} emisyon faktörleri")
+        self.etkb_title.setObjectName("cardTitle")
+        elay.addWidget(self.etkb_title)
         self.etkb_table = _table(["Kaynak", "tCO2/MWh", "tCO2-eşd/MWh"])
         self.etkb_table.verticalHeader().setDefaultSectionSize(24)
         self._fill_etkb()
@@ -231,6 +306,8 @@ class CalcTab(QWidget):
         root.addWidget(split, 1)
 
     def _fill_etkb(self) -> None:
+        if hasattr(self, "etkb_title"):
+            self.etkb_title.setText(f"{data.factors_label()} emisyon faktörleri")
         rows = data.etkb_factors()
         t = self.etkb_table
         t.setRowCount(len(rows))
@@ -253,6 +330,7 @@ class CalcTab(QWidget):
         self.title.setText(f"{c.machine['name']} · {fmt.date(i.date)} · {fmt.window(i.s, i.L)} → "
                            f"{fmt.window(i.t, i.L)} · %{fmt.num(i.p * 100, 0)} · {mode}")
 
+        self.formula.setHtml(formula_html(data.grid_label(i.date), data.factors_label()))
         rows = breakdown(c.load, c.ci, r, i.p)
         self.table.setRowCount(len(rows))
         for n, row in enumerate(rows):
@@ -450,39 +528,52 @@ class HistoryTab(QWidget):
 
 
 class SourcesTab(QWidget):
+    """Kaynaklar: yüklü verilere göre her veri değişiminde yeniden doldurulur (refresh)."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        root = QVBoxLayout(self)
+        root = theme.scroll_page(self, 520)
         root.setContentsMargins(0, 8, 0, 0)
         root.setSpacing(12)
 
         grid = QGridLayout()
         grid.setSpacing(12)
-        for col, (title, stat, text) in enumerate(SOURCE_CARDS):
-            frame, lay = theme.card(title, margins=(16, 14, 16, 14))
-            chip = QLabel(stat)
+        self._cards: list[tuple[QLabel, QLabel, QLabel]] = []
+        for col in range(3):
+            frame, lay = theme.card(margins=(16, 14, 16, 14))
+            title = QLabel("")
+            title.setObjectName("cardTitle")
+            lay.addWidget(title)
+            chip = QLabel("")
             chip.setStyleSheet(f"color: {theme.PRIMARY}; background: {theme.PRIMARY_SOFT};"
                                " border-radius: 9px; padding: 2px 10px; font-weight: 600;")
-            chip.setMaximumWidth(chip.sizeHint().width() + 24)
-            lay.addWidget(chip)
-            body = QLabel(text)
+            lay.addWidget(chip, 0, Qt.AlignLeft)
+            body = QLabel("")
             body.setWordWrap(True)
             body.setStyleSheet("line-height: 140%;")
             lay.addWidget(body)
             lay.addStretch(1)
             grid.addWidget(frame, 0, col)
+            self._cards.append((title, chip, body))
         root.addLayout(grid)
 
+        pcard, pl = theme.card("Eklenen veri paketleri", margins=(16, 12, 16, 12))
+        self.packages = QLabel("")
+        self.packages.setWordWrap(True)
+        self.packages.setTextFormat(Qt.RichText)
+        pl.addWidget(self.packages)
+        root.addWidget(pcard)
+
         note, nl = theme.card(name="noteCard", margins=(16, 12, 16, 12))
-        n = QLabel(NOTE_HTML)
-        n.setWordWrap(True)
-        nl.addWidget(n)
+        self.note = QLabel("")
+        self.note.setWordWrap(True)
+        nl.addWidget(self.note)
         root.addWidget(note)
 
         method, ml = theme.card(margins=(16, 12, 16, 12))
-        m = QLabel(METHOD_HTML)
-        m.setWordWrap(True)
-        ml.addWidget(m)
+        self.method = QLabel("")
+        self.method.setWordWrap(True)
+        ml.addWidget(self.method)
         root.addWidget(method)
 
         scope, sl = theme.card(margins=(16, 12, 16, 12))
@@ -491,3 +582,14 @@ class SourcesTab(QWidget):
         sl.addWidget(s)
         root.addWidget(scope)
         root.addStretch(1)
+        self.refresh()
+
+    def refresh(self) -> None:
+        sm = data.source_summary()
+        for (title, chip, body), (t, c, b) in zip(self._cards, source_cards(sm)):
+            title.setText(t)
+            chip.setText(c)
+            body.setText(b)
+        self.packages.setText(packages_html(sm))
+        self.note.setText(note_html(sm))
+        self.method.setText(method_html())
