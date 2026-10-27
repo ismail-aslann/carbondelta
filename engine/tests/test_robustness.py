@@ -113,3 +113,61 @@ def test_zero_ratio_message_names_the_ratio():
     assert r.status == "no_load"
     assert "oranı %0" in status_message(r, set(), 0.0)
     assert "yük yok" in status_message(r, set(), 1.0)
+
+
+def test_sources_follow_packages(pkg_dir, tmp_path):
+    from desktop.tabs import note_html, packages_html, source_cards
+    assert "Henüz veri eklenmedi" in packages_html()
+    _write(tmp_path / "m.csv", ["Tarih;Saat;kWh"] + [f"2025-07-15;{h};5" for h in range(24)])
+    c = pk.check_machine_file(tmp_path / "m.csv", set(data.all_dates()))
+    p = pk.add_machine_package(c, "Hat 3 Kompresör", "x", True, "real")
+    data.reload()
+    cards = source_cards()
+    assert "Makine yükleri" == cards[2][0] and "Hat 3 Kompresör" in cards[2][2] and "8 makine" in cards[2][1]
+    assert "Hat 3 Kompresör" in packages_html() and "Etkin" in packages_html()
+    assert "birlikte" in note_html() and "Tesis ölçümü ve örnek yük" in data.overall_source_label()
+    pk.set_enabled(p.id, False)
+    data.reload()
+    assert "Kapalı" in packages_html() and "Hat 3" not in source_cards()[2][2]
+    pk.delete_package(p.id)
+    data.reload()
+    assert "Henüz veri eklenmedi" in packages_html() and source_cards()[2][0] == data.SAMPLE_SOURCE
+
+
+@pytest.mark.parametrize("s, L, t, p", [(3, 3, 18, 1.0), (3, 3, 18, 0.5), (3, 3, 4, 1.0), (18, 3, 3, 0.25)])
+def test_chart_draws_shifted_energy(s, L, t, p):
+    import os as _os
+    _os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance() or QApplication([])  # noqa: F841
+    from desktop.chart_widget import ChartWidget
+    load, ci = data.scenario_series("comp_b", "2025-07-15")
+    ch = ChartWidget()
+    ch.update_chart(ci, load, s, L, t, set(), "ok", -1.0, "tCO2", p)
+    moved = p * sum(load[s:s + L])
+    assert sum(ch._out) == pytest.approx(moved) and sum(ch._in) == pytest.approx(moved)
+    assert all(ch._in[h] == 0 for h in range(24) if not t <= h < t + L)
+    ch.update_chart(ci, load, s, L, t, set(), "ok", -1.0, "tCO2", 0.0)
+    assert sum(ch._in) == 0                       # oran %0: grafikte taşıma yok
+
+
+def test_best_tab_uses_kind_param_and_ratio():
+    import os as _os
+    _os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance() or QApplication([])  # noqa: F841
+    from desktop.main_window import HourSpinBox
+    from desktop.tools_tabs import BestWindowTab
+    t = BestWindowTab(HourSpinBox)
+    t.load_inputs("comp_b", "2025-07-15", 3, 3, 1.0, [], "tCO2")
+    full = t._rows[0][1]
+    t.p.setValue(50)
+    t.recompute()
+    half = t._rows[0][1]
+    assert half.delta_pct == pytest.approx(full.delta_pct)            # yüzde orandan bağımsız
+    assert half.scenario_kg == pytest.approx(full.scenario_kg / 2)    # kg oranla değişir
+    t.load_inputs("comp_b", "2025-07-15", 3, 3, 1.0, [], "tCO2esd", 10.0)
+    load, ci = data.scenario_series("comp_b", "2025-07-15", "tCO2esd", 10.0)
+    from engine.best_window import best_window
+    bt, br = best_window(load, ci, 3, 3, 1.0)
+    assert t._rows[0][0] == bt and t._rows[0][1].scenario_kg == pytest.approx(br.scenario_kg)

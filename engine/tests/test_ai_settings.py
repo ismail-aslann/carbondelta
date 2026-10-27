@@ -79,3 +79,43 @@ def test_service_set_config_clears_cache(settings_dir):
     svc._cache["x"] = object()
     svc.set_config(ai_client.AIConfig("gemini", "k", "m"))
     assert svc.online and svc._cache == {}
+
+
+@pytest.mark.parametrize("provider, url, model", [("openai", "api.openai.com", "gpt-5-mini"),
+                                                  ("grok", "api.x.ai", "grok-4.6")])
+def test_chat_providers_request_shape(monkeypatch, provider, url, model):
+    sent = {}
+
+    def fake_post(u, headers, body):
+        sent.update(url=u, headers=headers, body=body)
+        return {"choices": [{"message": {"content": "  tamam  "}}]}
+
+    monkeypatch.setattr(ai_client, "_post_json", fake_post)
+    cfg = ai_client.AIConfig(provider, "k-123", ai_client.DEFAULT_MODELS[provider])
+    assert cfg.enabled and cfg.model == model
+    assert ai_client.call_llm(cfg, "sistem", "kullanıcı", json_mode=True) == "tamam"
+    assert url in sent["url"] and sent["headers"]["authorization"] == "Bearer k-123"
+    b = sent["body"]
+    assert b["messages"][0] == {"role": "system", "content": "sistem"}
+    assert b["response_format"] == {"type": "json_object"}
+    if provider == "openai":
+        assert "temperature" not in b and b["max_completion_tokens"] > 0   # GPT-5 sıcaklık kabul etmez
+    else:
+        assert b["temperature"] == 0
+
+
+def test_chat_provider_errors(monkeypatch):
+    monkeypatch.setattr(ai_client, "_post_json", lambda u, h, b: {"choices": [{"message": {"content": ""}}]})
+    with pytest.raises(ai_client.AIError):
+        ai_client.call_llm(ai_client.AIConfig("grok", "k", "grok-4.6"), "s", "u")
+    monkeypatch.setattr(ai_client, "_post_json", lambda u, h, b: {"error": "x"})
+    with pytest.raises(ai_client.AIError):
+        ai_client.call_llm(ai_client.AIConfig("openai", "k", "gpt-5-mini"), "s", "u")
+
+
+def test_saved_new_providers_load(settings_dir):
+    ai_settings.save("openai", "sk-o")
+    cfg = ai_client.load_config()
+    assert (cfg.provider, cfg.model, cfg.enabled) == ("openai", "gpt-5-mini", True)
+    ai_settings.save("grok", "xai-k", "grok-özel")
+    assert ai_client.load_config().model == "grok-özel"

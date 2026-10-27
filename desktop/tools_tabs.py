@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (  # noqa: E402
 )
 
 from desktop import delti, fmt, theme  # noqa: E402
+from desktop.ratio import RatioControl  # noqa: E402
 from desktop.keyboard import DateEdit  # noqa: E402
 from desktop.tabs import _item, _table  # noqa: E402
 from engine import data  # noqa: E402
@@ -46,7 +47,9 @@ class _DeltaChart(FigureCanvasQTAgg):
         self.setMinimumHeight(200)
         self.ax = self.figure.add_subplot(111)
 
-    def update_chart(self, items: list[tuple[int, float]], best_t: int | None, source_t: int) -> None:
+    def update_chart(self, items: list[tuple[int, float]], best_t: int | None, source_t: int,
+                     best_pct: float | None = None, unit: str = "kg CO2") -> None:
+        """items: (hedef başlangıç, emisyon değişimi kg). kg oranla değişir; yüzde en iyi çubukta yazılır."""
         ax = self.ax
         ax.clear()
         if items:
@@ -59,7 +62,15 @@ class _DeltaChart(FigureCanvasQTAgg):
                 b.set_alpha(1.0)
                 b.set_edgecolor("#0f5b46")
                 b.set_linewidth(1.6)
+                if best_pct is not None:
+                    v = vals[hours.index(best_t)]
+                    ax.annotate(fmt.pct(best_pct), (best_t, v), xytext=(0, -12 if v < 0 else 4),
+                                textcoords="offset points", ha="center", va="top" if v < 0 else "bottom",
+                                fontsize=8, fontweight="bold", color="#0f5b46")
             ax.axhline(0, color="#9aa5b1", linewidth=0.8)
+            lo, hi = min(min(vals), 0.0), max(max(vals), 0.0)
+            pad = (hi - lo) * 0.12 or 0.1
+            ax.set_ylim(lo - pad * 1.4, hi + pad)   # en iyi çubuğun yüzde etiketi eksene çarpmasın
             ax.axvline(source_t, color="#7f8a96", linewidth=1, linestyle="--")
             ax.text(source_t, ax.get_ylim()[1], " standart", fontsize=7.5, color="#5b6776", va="top")
         ax.set_xlim(-0.6, 23.6)
@@ -69,7 +80,7 @@ class _DeltaChart(FigureCanvasQTAgg):
         ax.tick_params(axis="x", length=0)
         ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _p: fmt.num(v, 1)))
         ax.set_xlabel("Hedef başlangıç saati", fontsize=8.5, color="#5b6776")
-        ax.set_ylabel("Değişim (%)", fontsize=8.5, color="#5b6776")
+        ax.set_ylabel(f"Emisyon değişimi ({unit})", fontsize=8.5, color="#5b6776")
         ax.grid(axis="y", color="#e9edf1", linewidth=0.8)
         ax.set_axisbelow(True)
         for side in ("top", "right", "left"):
@@ -117,18 +128,16 @@ class BestWindowTab(QWidget):
         self.L = QSpinBox()
         self.L.setRange(1, 12)
         self.L.setSuffix(" saat")
-        self.p = QSlider(Qt.Horizontal)
-        self.p.setRange(0, 100)
-        self.p.setFixedWidth(110)
-        self.p_label = QLabel("%100")
-        self.p_label.setMinimumWidth(38)
+        self.p = RatioControl(slider_width=100)
+        self.p_label = QLabel()   # eski çağrılar için (gösterilmez)
+        self._kind = "tCO2"
+        self._param: float | None = None
         for label, w in (("Makine", self.machine), ("Gün", self.date), ("Standart", self.s),
                          ("Uzunluk", self.L)):
             row.addWidget(theme.muted(label))
             row.addWidget(w)
         row.addWidget(theme.muted("Oran"))
         row.addWidget(self.p)
-        row.addWidget(self.p_label)
         row.addStretch(1)
         lay.addLayout(row)
         self.restricted_note = theme.muted("", wrap=True)
@@ -170,8 +179,8 @@ class BestWindowTab(QWidget):
         ccard, cl = theme.card("Saate göre emisyon değişimi")
         self.chart = _DeltaChart()
         cl.addWidget(self.chart, 1)
-        cl.addWidget(theme.muted("Yeşil çubuklar emisyonu düşüren, kırmızılar artıran hedef saatlerdir. "
-                                 "Çerçeveli çubuk en temiz penceredir.", wrap=True))
+        cl.addWidget(theme.muted("Her çubuk, o hedef saate taşınınca emisyonun kaç kg değiştiğini gösterir (oranla "
+                                 "değişir). Yeşil düşüren, kırmızı artıran; çerçeveli çubuk en temiz penceredir.", wrap=True))
         body.addWidget(ccard, 2)
         root.addLayout(body, 1)
 
@@ -187,7 +196,9 @@ class BestWindowTab(QWidget):
         self._loading = False
 
     # ---------------------------------------------------------- girdiler
-    def load_inputs(self, asset_id: str, date: str, s: int, L: int, p: float, restricted: list[int]) -> None:
+    def load_inputs(self, asset_id: str, date: str, s: int, L: int, p: float, restricted: list[int],
+                    kind: str = "tCO2", param_kwh: float | None = None) -> None:
+        self._kind, self._param = kind, param_kwh
         """Senaryo sekmesindeki değerlerle başlar (kaydırılamaz makinede ilk uygun makine)."""
         self._loading = True
         idx = self.machine.findData(asset_id)
@@ -240,18 +251,28 @@ class BestWindowTab(QWidget):
     # ------------------------------------------------------------- hesap
     def recompute(self) -> None:
         i = self._inputs()
-        load, ci = data.scenario_series(i["asset_id"], i["date"])
+        load, ci = data.scenario_series(i["asset_id"], i["date"], self._kind, self._param)
         cands = scan_windows(load, ci, i["s"], i["L"], i["p"], self._restricted, True)
         ranked = sorted(cands, key=lambda tr: (tr[1].scenario_kg, tr[0]))
         self._rows = ranked
-        self.restricted_note.setText(
-            "Kısıtlı saatler (Senaryo sekmesinden): " + ", ".join(fmt.hour(h) for h in sorted(self._restricted))
-            if self._restricted else "Kısıtlı saat yok. Kısıtlı saatleri Senaryo sekmesinden işaretleyebilirsiniz.")
+        notes = ["Kısıtlı saatler (Senaryo sekmesinden): " + ", ".join(fmt.hour(h) for h in sorted(self._restricted))
+                 if self._restricted else "Kısıtlı saat yok. Kısıtlı saatleri Senaryo sekmesinden işaretleyebilirsiniz."]
+        if self._kind != "tCO2":
+            notes.append("Emisyon tipi: tCO2-eşd.")
+        if self._param is not None:
+            notes.append(f"Parametrik mod: her saat sabit {fmt.num(self._param, 1)} kWh.")
+        s_end = i["s"] + i["L"]
+        if s_end <= 24:
+            window = sum(load[i["s"]:s_end])
+            notes.append(f"Taşınan: {fmt.num(i['p'] * window)} kWh (standart pencere {fmt.num(window)} kWh × "
+                         f"%{fmt.num(i['p'] * 100, 0)}); yüzde orandan bağımsızdır, kg değerleri oranla değişir.")
+        self.restricted_note.setText(" · ".join(notes))
+        unit = "kg CO2" if self._kind == "tCO2" else "kg CO2-eşd"
 
         self.table.setRowCount(len(ranked))
         for n, (t, r) in enumerate(ranked):
             label = fmt.window(t, i["L"]) + ("  (standart)" if t == i["s"] else "")
-            vals = [str(n + 1), label, f"{fmt.num(r.scenario_kg)} kgCO2", fmt.pct(r.delta_pct),
+            vals = [str(n + 1), label, f"{fmt.num(r.scenario_kg)} {unit.replace(' ', '')}", fmt.pct(r.delta_pct),
                     fmt.pct(r.daily_delta_pct)]
             for col, v in enumerate(vals):
                 it = _item(v, Qt.AlignCenter)
@@ -270,7 +291,7 @@ class BestWindowTab(QWidget):
         if not ranked:
             self.summary.setText("Bu girdilerle geçerli hedef pencere yok (standart pencerede yük yok "
                                  "veya tüm saatler kısıtlı).")
-            self.chart.update_chart([], None, i["s"])
+            self.chart.update_chart([], None, i["s"], None, unit)
             return
         best_t, best = ranked[0]
         if best_t == i["s"]:
@@ -282,8 +303,8 @@ class BestWindowTab(QWidget):
                     f"<b style='color:{theme.GOOD}'>{fmt.pct(best.delta_pct)}</b> değişir "
                     f"({len(ranked)} geçerli pencere tarandı).")
         self.summary.setText(text)
-        by_t = sorted(((t, r.delta_pct or 0.0) for t, r in ranked), key=lambda x: x[0])
-        self.chart.update_chart(by_t, best_t, i["s"])
+        by_t = sorted(((t, r.scenario_kg - r.baseline_kg) for t, r in ranked), key=lambda x: x[0])
+        self.chart.update_chart(by_t, best_t, i["s"], best.delta_pct, unit)
 
     def eventFilter(self, obj, event) -> bool:
         if obj is self.table and event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):

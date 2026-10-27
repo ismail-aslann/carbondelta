@@ -1,7 +1,7 @@
 """AI açıklama katmanı: LLM yalnızca motorun ürettiği sayıları metne çevirir.
 
 - Ayarlar: uygulamadaki "Delti ayarları" (desktop/ai_settings.py) veya .env:
-  LLM_PROVIDER (gemini | claude), LLM_API_KEY, LLM_MODEL
+  LLM_PROVIDER (gemini | claude | openai | grok), LLM_API_KEY, LLM_MODEL
 - İstekler QThread içinde, 15 sn zaman aşımı; arayüz donmaz.
 - Metindeki her sayı girdilerdeki sayılarla doğrulanır; uymazsa şablon metin gösterilir.
 - Anahtar/internet yoksa veya hata olursa: çevrimdışı mesajı + şablon metin.
@@ -23,7 +23,11 @@ from PySide6.QtCore import QObject, QThread, Signal
 from desktop.resources import resource_path
 
 TIMEOUT_S = 15
-DEFAULT_MODELS = {"gemini": "gemini-flash-lite-latest", "claude": "claude-opus-5-5"}
+DEFAULT_MODELS = {"gemini": "gemini-flash-lite-latest", "claude": "claude-opus-5-5", "openai": "gpt-5-mini",
+                  "grok": "grok-4.6"}
+# OpenAI ve xAI (Grok) aynı "chat completions" biçimini kullanır.
+CHAT_URLS = {"openai": "https://api.openai.com/v1/chat/completions",
+             "grok": "https://api.x.ai/v1/chat/completions"}
 # Sunucu tarafı ret yedeği ("fallbacks": "default") yalnızca bu modellerde geçerli.
 CLAUDE_FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"}
 ALLOWED_HOURS = range(0, 25)
@@ -208,11 +212,44 @@ def _call_claude(cfg: AIConfig, system: str, user: str, json_mode: bool) -> str:
     return text.strip()
 
 
+def _call_chat(cfg: AIConfig, system: str, user: str, json_mode: bool) -> str:
+    """OpenAI (GPT) ve xAI (Grok) için ortak çağrı.
+
+    OpenAI GPT-5 ailesi temperature parametresini kabul etmez ve max_tokens yerine max_completion_tokens ister;
+    akıl yürütme payı düşük tutulur. Grok sıcaklık 0 ile belirlenimci çalışır.
+    """
+    body = {
+        "model": cfg.model,
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+    }
+    if cfg.provider == "openai":
+        body["max_completion_tokens"] = 4096
+        if cfg.model.startswith(("gpt-5", "o")):
+            body["reasoning_effort"] = "low"
+        else:
+            body["temperature"] = 0
+    else:
+        body["max_tokens"] = 2048
+        body["temperature"] = 0
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    data = _post_json(CHAT_URLS[cfg.provider], {"authorization": f"Bearer {cfg.api_key}"}, body)
+    try:
+        text = data["choices"][0]["message"].get("content") or ""
+    except (KeyError, IndexError, TypeError) as e:
+        raise AIError(f"Beklenmeyen yanıt: {str(data)[:200]}") from e
+    if not text.strip():
+        raise AIError("Boş yanıt.")
+    return text.strip()
+
+
 def call_llm(cfg: AIConfig, system: str, user: str, json_mode: bool = False) -> str:
     if not cfg.enabled:
         raise AIError("AI yapılandırılmamış.")
     if cfg.provider == "claude":
         return _call_claude(cfg, system, user, json_mode)
+    if cfg.provider in CHAT_URLS:
+        return _call_chat(cfg, system, user, json_mode)
     return _call_gemini(cfg, system, user, json_mode)
 
 

@@ -148,7 +148,7 @@ yazarsa metin gösterilmez, yerine şablon metin gelir. Etikette <i>AI</i>, <i>D
 Yüzde ve tüm hesaplar çalışmaya devam eder.</p>
 <p><b>Delti'yi uyandırmak (API anahtarı):</b> Delti'ye Sor sekmesindeki <i>Delti'yi uyandır</i> / <i>⚙ Ayarlar</i>
 düğmesi, ana sayfanın altındaki <i>uyandır</i> bağlantısı ya da Ctrl+, ile <b>Delti ayarları</b> açılır.
-Sağlayıcıyı (Google Gemini veya Anthropic Claude) seçin, anahtarı yapıştırın, <i>Bağlantıyı dene</i> ile
+Sağlayıcıyı (Google Gemini, Anthropic Claude, OpenAI GPT ya da xAI Grok) seçin, anahtarı yapıştırın, <i>Bağlantıyı dene</i> ile
 kontrol edip <i>Kaydet</i>'e basın. Anahtar bu bilgisayarda, yalnızca sizin Windows hesabınızın çözebileceği
 şekilde şifrelenerek saklanır; program güncellense de silinmez. <i>Anahtarı kaldır</i> ile silinir.</p>"""),
 

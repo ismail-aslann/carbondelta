@@ -170,9 +170,9 @@ ile kontrol edilip kaydedilir. Anahtar `%APPDATA%\CarbonDelta\delti_ayarlar.json
 **Dosyayla:** `.env.example` dosyasını `.env` olarak kopyalayın:
 
 ```
-LLM_PROVIDER=gemini        # veya claude
+LLM_PROVIDER=gemini        # veya claude, openai, grok
 LLM_API_KEY=...
-LLM_MODEL=                 # boş: gemini-flash-lite-latest / claude-opus-5-5
+LLM_MODEL=                 # boş: gemini-flash-lite-latest / claude-opus-5-5 / gpt-5-mini / grok-4.6
 ```
 
 - Geliştirmede `.env` repo kökünde, EXE ile kullanırken **EXE'nin yanında** (`dist\CarbonDelta\.env`) durur. EXE'ye gömülmez, git'e girmez.

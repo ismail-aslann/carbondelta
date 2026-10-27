@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (  # noqa: E402
     QPushButton, QSlider, QSpinBox, QVBoxLayout, QWidget,
 )
 
+from desktop.ratio import RatioControl  # noqa: E402
 from desktop import fmt, theme  # noqa: E402
 from desktop.keyboard import DateEdit  # noqa: E402
 from desktop.tabs import _item, _raw, _stat, _table  # noqa: E402
@@ -135,12 +136,8 @@ class PlanTab(QWidget):
         self.L = QSpinBox()
         self.L.setRange(1, 12)
         self.L.setSuffix(" saat")
-        self.p = QSlider(Qt.Horizontal)
-        self.p.setRange(0, 100)
-        self.p.setValue(100)
-        self.p.setFixedWidth(100)
-        self.p_label = QLabel("%100")
-        self.p_label.setMinimumWidth(38)
+        self.p = RatioControl(slider_width=90)
+        self.p_label = QLabel()   # eski çağrılar için (gösterilmez)
         self.limit = QDoubleSpinBox()
         self.limit.setRange(0, 1_000_000)
         self.limit.setDecimals(0)
@@ -161,7 +158,6 @@ class PlanTab(QWidget):
             row.addWidget(w)
         row.addWidget(theme.muted("Oran"))
         row.addWidget(self.p)
-        row.addWidget(self.p_label)
         row.addWidget(theme.muted("Tepe sınırı"))
         row.addWidget(self.limit)
         row.addStretch(1)

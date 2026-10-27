@@ -249,6 +249,49 @@ def scenario_series(asset_id: str, date: str, kind: str = "tCO2",
 
 
 # ------------------------------------------------------------------ etiketler
+def source_summary() -> dict:
+    """Ekrandaki kaynak metinleri için yüklü verinin özeti; veri paketi eklenip silindikçe değişir.
+
+    grids: [(etiket, gün)] şebeke verisinin kaynağına göre; years: şebeke yılları; factors: etkin katsayı
+    etiketi; sample / real: [(makine adı, gün)]; packages: etkin ve kapalı kullanıcı paketleri.
+    """
+    from collections import Counter
+    grids = Counter(grid_label(d) for d in all_dates())
+    order = [BASE_GRID_LABEL] + sorted(k for k in grids if k != BASE_GRID_LABEL)
+    _f, label, rows, is_pkg = _active_factors()
+    ms = machines()
+    pkgs = [{"name": p.name, "kind": p.kind, "enabled": p.enabled, "meta": p.meta, "created_at": p.created_at}
+            for p in pk.list_packages() if p.kind != pk.KIND_BROKEN]
+    return {
+        "grids": [(k, grids[k]) for k in order if k in grids],
+        "years": sorted({int(d[:4]) for d in all_dates()}),
+        "days": len(all_dates()),
+        "factors": label,
+        "factors_is_package": is_pkg,
+        "factor_count": len(rows),
+        "sample": [(m["name"], len(m["days"])) for m in ms if m.get("source") != "real"],
+        "real": [(m["name"], len(m["days"])) for m in ms if m.get("source") == "real"],
+        "packages": pkgs,
+    }
+
+
+def years_text(years: list[int]) -> str:
+    if not years:
+        return ""
+    return str(years[0]) if len(years) == 1 else f"{years[0]}–{years[-1]}"
+
+
+def overall_source_label() -> str:
+    """Makineden bağımsız genel kaynak satırı (ana ekran)."""
+    s = source_summary()
+    grids = ", ".join(k for k, _ in s["grids"])
+    if s["real"] and s["sample"]:
+        return f"Tesis ölçümü ve örnek yük · Kaynak: {grids}, {s['factors']}, {SAMPLE_SOURCE}"
+    if s["real"]:
+        return f"Tesis ölçümü (Balıkesir) · Kaynak: {grids}, {s['factors']}"
+    return f"Örnek yük, Balıkesir tesisi değil · Kaynak: {grids}, {s['factors']}, {SAMPLE_SOURCE}"
+
+
 def is_real(asset_id: str) -> bool:
     try:
         return machine(asset_id).get("source") == "real"

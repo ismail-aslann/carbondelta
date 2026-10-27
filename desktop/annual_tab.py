@@ -21,8 +21,9 @@ from PySide6.QtWidgets import (  # noqa: E402
     QSpinBox, QVBoxLayout, QWidget,
 )
 
+from desktop.ratio import RatioControl  # noqa: E402
 from desktop import delti, fmt, theme  # noqa: E402
-from desktop.tabs import METHOD_HTML, _item, _raw, _stat, _table  # noqa: E402
+from desktop.tabs import _item, method_html, _raw, _stat, _table  # noqa: E402
 from engine import annual, data  # noqa: E402
 from engine.appinfo import APP_NAME  # noqa: E402
 
@@ -173,19 +174,14 @@ class AnnualTab(QWidget):
         self.L.setSuffix(" saat")
         self.t = hour_spin_cls()
         self.t.setRange(0, 23)
-        self.p = QSlider(Qt.Horizontal)
-        self.p.setRange(0, 100)
-        self.p.setValue(100)
-        self.p.setFixedWidth(100)
-        self.p_label = QLabel("%100")
-        self.p_label.setMinimumWidth(38)
+        self.p = RatioControl(slider_width=90)
+        self.p_label = QLabel()   # eski çağrılar için (gösterilmez)
         for label, w in (("Kapsam", self.machine), ("Yıl", self.year), ("Standart", self.s),
                          ("Uzunluk", self.L), ("Hedef", self.t)):
             row.addWidget(theme.muted(label))
             row.addWidget(w)
         row.addWidget(theme.muted("Oran"))
         row.addWidget(self.p)
-        row.addWidget(self.p_label)
         row.addStretch(1)
         self.pdf_button = QPushButton("PDF rapor")
         self.pdf_button.setToolTip("Yıllık sonucu, aylık dökümü, Delti yorumunu ve yöntemi tek sayfalık raporda kaydeder")
@@ -648,7 +644,7 @@ hesaplanır; gerçek etki büyük olasılıkla bu iki değer arasındadır.</p>
 <tr bgcolor="#e7f3ef"><th align="left">Ay</th><th>Gün</th><th>Standart (kg {u})</th><th>Seçilen (kg {u})</th>
 <th>Değişim (kg {u})</th><th>Değişim</th></tr>{rows}</table>
 {parts}
-<div style="font-size: 8.5pt;">{METHOD_HTML}</div>
+<div style="font-size: 8.5pt;">{method_html()}</div>
 <p style="color: #6b7785; font-size: 8.5pt;">Yıllık değişim = (ΣS − ΣB) / ΣB × 100. Karar destek amaçlıdır; karar
 kullanıcıdadır. {e(source_for(r)[0])}</p>
 </body></html>"""
