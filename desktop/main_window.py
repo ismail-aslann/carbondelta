@@ -422,13 +422,28 @@ class MainWindow(QMainWindow):
         self.p_slider = QSlider(Qt.Horizontal)
         self.p_slider.setRange(0, 100)
         self.p_slider.setValue(100)
-        self.p_label = QLabel("%100")
-        self.p_label.setMinimumWidth(38)
-        self.p_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.p_slider.setSingleStep(5)
+        self.p_slider.setPageStep(25)
+        self.p_slider.setTickPosition(QSlider.TicksBelow)
+        self.p_slider.setTickInterval(25)
+        self.p_slider.setToolTip("Standart penceredeki yükün ne kadarının hedef pencereye taşınacağı. "
+                                 "Grafikte taşınan kısım kesikli, hedefe eklenen kısım yeşil görünür.")
+        self.p_spin = QSpinBox()
+        self.p_spin.setRange(0, 100)
+        self.p_spin.setValue(100)
+        self.p_spin.setPrefix("%")
+        self.p_spin.setSingleStep(5)
+        self.p_spin.setFixedWidth(72)
+        self.p_label = self.p_spin   # eski adla erişen yerler için
         self.p_slider.valueChanged.connect(self._on_p_changed)
-        p_row.addWidget(self.p_slider)
-        p_row.addWidget(self.p_label)
+        self.p_spin.valueChanged.connect(self._on_p_spin)
+        p_row.addWidget(self.p_slider, 1)
+        p_row.addWidget(self.p_spin)
         form.addRow("Kaydırma oranı", p_row)
+        self.p_hint = QLabel("")
+        self.p_hint.setWordWrap(True)
+        self.p_hint.setStyleSheet(f"color: {MUTED}; font-size: 8.5pt;")
+        form.addRow("", self.p_hint)
 
         self.best_button = QPushButton("En iyi saati bul")
         self.best_button.setObjectName("primary")
@@ -598,7 +613,7 @@ class MainWindow(QMainWindow):
         self._loading = False
 
         shiftable = m["shiftable"]
-        for w in (self.s_spin, self.L_spin, self.t_spin, self.p_slider, self.best_button,
+        for w in (self.s_spin, self.L_spin, self.t_spin, self.p_slider, self.p_spin, self.best_button,
                   self.restricted_box, self.param_check, self.param_row):
             w.setEnabled(shiftable)
         self.non_shiftable_box.setVisible(not shiftable)
@@ -638,8 +653,15 @@ class MainWindow(QMainWindow):
         self.schedule()
 
     def _on_p_changed(self, value: int) -> None:
-        self.p_label.setText(f"%{value}")
+        if self.p_spin.value() != value:
+            self.p_spin.blockSignals(True)
+            self.p_spin.setValue(value)
+            self.p_spin.blockSignals(False)
         self.schedule()
+
+    def _on_p_spin(self, value: int) -> None:
+        if self.p_slider.value() != value:
+            self.p_slider.setValue(value)   # kaydırıcı sinyali hesabı tetikler
 
     def _on_param_toggled(self, on: bool) -> None:
         self.param_row.setVisible(on)
@@ -678,7 +700,9 @@ class MainWindow(QMainWindow):
         self.L_spin.setValue(i.L)
         self.t_spin.setValue(i.t)
         self.p_slider.setValue(round(i.p * 100))
-        self.p_label.setText(f"%{round(i.p * 100)}")
+        self.p_spin.blockSignals(True)
+        self.p_spin.setValue(round(i.p * 100))
+        self.p_spin.blockSignals(False)
         for h, chip in enumerate(self.hour_chips):
             chip.setChecked(h in i.restricted)
         (self.ci_tco2esd if i.ci_kind == "tCO2esd" else self.ci_tco2).setChecked(True)
@@ -701,7 +725,14 @@ class MainWindow(QMainWindow):
         self.current = Computation(i, m, load, ci, r)
 
         self.chart.update_chart(ci, load, i.s, i.L, i.t, set(i.restricted), r.status,
-                                r.delta_pct, CI_LABELS[i.ci_kind])
+                                r.delta_pct, CI_LABELS[i.ci_kind], i.p)
+        if 0 <= i.s and i.s + i.L <= 24 and m["shiftable"]:
+            window_kwh = sum(load[i.s:i.s + i.L])
+            self.p_hint.setText(f"Taşınan: {fmt.num(i.p * window_kwh)} kWh (standart pencere {fmt.num(window_kwh)} kWh "
+                                f"× %{fmt.num(i.p * 100, 0)}). Yüzde değişim orandan bağımsızdır; oran kg'ı ve "
+                                "günlük etkiyi değiştirir.")
+        else:
+            self.p_hint.setText("")
         if self.tabs.currentWidget() not in (self.annual_tab, self.plan_tab, self.sources_tab):
             self._set_footer(data.source_label(i.asset_id, i.date), data.is_real(i.asset_id))
         self._update_card(self.current)

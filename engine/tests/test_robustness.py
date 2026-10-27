@@ -132,3 +132,20 @@ def test_sources_follow_packages(pkg_dir, tmp_path):
     pk.delete_package(p.id)
     data.reload()
     assert "Henüz veri eklenmedi" in packages_html() and source_cards()[2][0] == data.SAMPLE_SOURCE
+
+
+@pytest.mark.parametrize("s, L, t, p", [(3, 3, 18, 1.0), (3, 3, 18, 0.5), (3, 3, 4, 1.0), (18, 3, 3, 0.25)])
+def test_chart_draws_shifted_energy(s, L, t, p):
+    import os as _os
+    _os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance() or QApplication([])  # noqa: F841
+    from desktop.chart_widget import ChartWidget
+    load, ci = data.scenario_series("comp_b", "2025-07-15")
+    ch = ChartWidget()
+    ch.update_chart(ci, load, s, L, t, set(), "ok", -1.0, "tCO2", p)
+    moved = p * sum(load[s:s + L])
+    assert sum(ch._out) == pytest.approx(moved) and sum(ch._in) == pytest.approx(moved)
+    assert all(ch._in[h] == 0 for h in range(24) if not t <= h < t + L)
+    ch.update_chart(ci, load, s, L, t, set(), "ok", -1.0, "tCO2", 0.0)
+    assert sum(ch._in) == 0                       # oran %0: grafikte taşıma yok
